@@ -1,0 +1,35 @@
+server:
+  port: 443
+  ssl:
+    key-store: classpath:3049031_fanzhoujixie.com.pfx
+    key-store-password: 6208LJ9k
+    key-store-type: PKCS12
+  max-http-header-size: 65535
+#  servlet:
+#    context-path: /api
+#192.168.0.100    FZJX_TIMESHEET
+#SA
+#fzjx123456#
+#url: jdbc:sqlserver://192.168.0.100;DatabaseName=FZJX_TIMESHEET
+spring:
+  datasource:
+    url: jdbc:sqlserver://192.168.0.100;DatabaseName=FZJX_TIMESHEET
+    #?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC&useSSL=false
+    username: SA
+    password: fzjx123456#
+    hikari:
+      driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
+  jackson:
+    serialization:
+      write-dates-as-timestamps: true
+  thymeleaf:
+    cache: false
+
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+  configuration:
+    map-underscore-to-camel-case: false
+logging:
+  level:
+    com:
+      baogong: debug

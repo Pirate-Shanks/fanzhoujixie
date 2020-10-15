@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>审核记录</title>
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="element-ui/packages/theme-chalk/lib/index.css">
+    <script src="js/vue/dist/vue.min.js"></script>
+    <script src="js/index.js"></script>
+    <script src="js/axios.min.js"></script>
+    <script src="js/main.js"></script>
+    <style>
+        .container {
+            height: 100%;
+            width: 100%;
+            min-width: 1000px;
+        }
+
+        .search-item {
+            float: left;
+        }
+
+        .header-search::after {
+            content: '';
+            display: block;
+            clear: both;
+        }
+    </style>
+</head>
+<body>
+    <el-container id="app" class="container">
+        <el-header style="height: 55px; background: #fff; padding: 14px 20px; box-sizing: border-box; border-bottom: 1px solid #999">
+            <el-date-picker class="search-item"
+                            v-model="searchData.date"
+                            type="daterange"
+                            range-separator="至"
+                            start-placeholder="开始日期"
+                            end-placeholder="结束日期"
+                            value-format="yyyy-MM-dd"
+                            size="mini"
+                            style="width: 250px">
+            </el-date-picker>
+            <div class="search-item" style="padding: 0 10px; line-height: 28px; color: #606266">-</div>
+            <el-input class="search-item"
+                      v-model="searchData.workSection"
+                      placeholder="工段名称"
+                     style="width: 200px"
+                     size="mini">
+            </el-input>
+            <div class="search-item" style="padding: 0 10px; line-height: 28px; color: #606266">-</div>
+            <el-button class="search-item" icon="el-icon-search" @click="querySearch" style="padding: 7px" plain size="mini"></el-button>
+            <el-button style="float: right" @click="queryAllData" plain size="mini">全部</el-button>
+        </el-header>
+        <el-main style="padding: 20px; background-color: #f4f4f4;">
+            <el-table :data="tableObject.tableData"
+                      max-height="auto"
+                      v-loading.fullscreen.lock="tableObject.loadingData"
+                      element-loading-text="数据加载中"
+                      element-loading-spinner="el-icon-loading"
+                      element-loading-background="rgba(0, 0, 0, 0.8)"
+                      style="width: 100%; min-width: 900px;">
+                <el-table-column prop="id" label="编号" min-width="5%" align="center"></el-table-column>
+                <el-table-column prop="checker_name" label="审核人" min-width="9%" align="center"></el-table-column>
+                <el-table-column label="审核结果" min-width="8%" align="center">
+                    <template slot-scope="scope">
+                        <el-link v-if="scope.row.checkType==0" type="danger" :underline="false" style="font-size: 12px;">
+                            退回
+                        </el-link>
+                        <el-link v-else-if="scope.row.checkType==1" type="success" :underline="false" style="font-size: 12px;">
+                            审核通过
+                        </el-link>
+                    </template>
+                </el-table-column>
+                <el-table-column label="报工类型" min-width="10%" align="center">
+                    <template slot-scope="scope">
+                        {{scope.row.workType | workTypeFilter}}
+                    </template>
+                </el-table-column>
+                <el-table-column prop="workId" label="工单单别" min-width="12%" align="center"></el-table-column>
+                <el-table-column prop="workNum" label="工单单号" min-width="10%" align="center"></el-table-column>
+                <el-table-column prop="user_name" label="提交人" min-width="10%" align="center"></el-table-column>
+                <el-table-column prop="proName" label="产品名称" min-width="13%" align="center"></el-table-column>
+                <el-table-column prop="date" label="日期" min-width="13%" align="center"></el-table-column>
+                <el-table-column prop="workSection" label="工段" min-width="10%" align="center"></el-table-column>
+            </el-table>
+        </el-main>
+        <el-footer style="height: available; padding: 10px 20px; border-top: 1px solid #999">
+            <el-pagination
+                    background
+                    layout="prev, pager, next"
+                    :page-size="10"
+                    :total="tableObject.totalNum"
+                    @current-change="queryDataByPageNum"
+                    :current-page.sync="tableObject.currentPage"
+                    style="display: inline-block">
+            </el-pagination>
+        </el-footer>
+    </el-container>
+</body>
+<script>
+    new Vue({
+        el: "#app",
+        created: function () {
+            this.queryAllData();
+        },
+        data: {
+            searchData: {
+                date: null,
+                workSection: ''
+            },
+            tableObject: {
+                tableData: [],
+                totalNum: 0,
+                currentPage: 1,
+                loadingData: false,
+                date: null,
+                workSection: ''
+            }
+        },
+        methods: {
+            //查询全部数据
+            queryAllData: function() {
+                this.tableObject.currentPage = 1;
+
+                this.tableObject.date = null;
+                this.tableObject.workSection = '';
+
+                //查询数据总数
+                this.queryDataNum();
+                //查询第一页数据
+                this.queryDataByPageNum(1);
+            },
+
+            //搜索查询
+            querySearch: function() {
+                this.tableObject.currentPage = 1;
+
+                this.tableObject.date = this.searchData.date;
+                this.tableObject.workSection = this.searchData.workSection;
+
+                //查询数据总数
+                this.queryDataNum();
+                //查询第一页数据
+                this.queryDataByPageNum(1);
+            },
+
+            //查询数据总数
+            queryDataNum: function() {
+                let that = this;
+
+                let CheckerLogPick = {
+                    date: this.tableObject.date,
+                    workSection: this.tableObject.workSection
+                };
+
+                requestPost("queryLogPagesOnConditions", CheckerLogPick, response => {
+                    that.tableObject.totalNum = response.data;
+                })
+            },
+
+            //根据页数查询数据
+            queryDataByPageNum: function(pageNum) {
+                let that = this;
+
+                let CheckerLogPick = {
+                    date: this.tableObject.date,
+                    workSection: this.tableObject.workSection,
+                    pageNum: pageNum
+                };
+
+                that.tableObject.loadingData = true;
+                requestPost("queryLogDataOnConditions", CheckerLogPick, response => {
+                    that.tableObject.tableData = response.data;
+                    that.tableObject.loadingData = false;
+                }, () => {
+                    that.tableObject.tableData = [];
+                    that.tableObject.loadingData = false;
+                    that.$message.error("网络异常");
+                })
+            }
+        },
+        filters: {
+            workTypeFilter: function (workType) {
+                switch (workType) {
+                    case 'D401': return '正常报工';
+                    case 'D402': return '辅助报工';
+                }
+            }
+        }
+    })
+</script>
+</html>

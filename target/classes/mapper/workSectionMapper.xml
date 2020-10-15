@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.baogong.dao.WorkSectionDao">
+    <select id="findWorkSpaceName" parameterType="string" resultType="string">
+        select workspace from worktime where id = #{id}
+    </select>
+
+    <select id="findWorkSpaceId" parameterType="string" resultType="string">
+        select id from worktime where workspace = #{name}
+    </select>
+
+    <select id="managerQueryAllWorkSpace" resultType="string">
+        select workspace from worktime
+    </select>
+</mapper>

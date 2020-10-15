@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>系统设置</title>
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="element-ui/packages/theme-chalk/lib/index.css">
+    <script src="js/vue/dist/vue.min.js"></script>
+    <script src="js/index.js"></script>
+    <script src="js/axios.min.js"></script>
+    <script src="js/main.js"></script>
+    <style>
+        .part-card {
+            margin-bottom: 20px;
+        }
+
+        .el-card__body {
+            padding: 20px 0;
+        }
+
+        .col-item {
+            padding: 0 20px;
+        }
+
+        .setting-item-tit {
+            font-size: 14px;
+            line-height: 28px;
+            margin-right: 10px;
+            color: #8c939d;
+        }
+
+        .info-item {
+            line-height: 30px;
+        }
+
+        .info-item .info-item-tit {
+            font-size: 14px;
+            color: #8c939d;
+            margin-right: 20px;
+            display: inline-block;
+            width: 50px;
+        }
+
+        .info-item .info-item-val {
+            font-size: 12px;
+            color: #333;
+        }
+
+        .info-item .info-edit-btn {
+            padding: 0;
+        }
+
+        .right-btn {
+            float: right;
+        }
+
+        .font-12 {
+            font-size: 12px;
+        }
+
+        .textAlign {
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+<el-container id="app" style="height: 100%; width: 100%; min-width: 1000px">
+    <el-header style="height: 56px; line-height: 56px; font-size: 20px; background: #fff;">
+        <span>系统设置</span>
+    </el-header>
+    <el-main style="background-color: #f4f4f4; padding: 20px;">
+        <el-card class="part-card" shadow="hover">
+            <div slot="header" style="font-size: 15px">
+                <span>系统设置</span>
+            </div>
+            <el-row style="padding: 10px 0">
+<!--                <el-col class="col-item" :span="8">-->
+<!--                    <span class="setting-item-tit">通知未报工用户</span>-->
+<!--                    <el-button type="primary" size="mini">通知</el-button>-->
+<!--                </el-col>-->
+                <el-col class="col-item" :span="8">
+                    <span class="setting-item-tit">控制报工日期不超过两天</span>
+                    <el-switch v-model="controlTime"
+                               active-text="开启"
+                               inactive-text="关闭"
+                               @change="changeControlTime">
+                    </el-switch>
+                </el-col>
+            </el-row>
+            <el-row style="padding: 10px 0">
+                <el-col class="col-item" :span="24">
+                    <el-row style="padding: 5px 0">
+                        <span class="setting-item-tit">不允许登录时间段</span>
+                    </el-row>
+                    <el-row style="padding: 5px 0">
+                        <span class="setting-item-tit">时间段1</span>
+                        <el-time-select size="mini"
+                                        v-model="noLoginTime.startTime1"
+                                        :picker-options="{
+											start: '00:00',
+											step: '00:15',
+											end: '23:45'
+										 }">
+                        </el-time-select>
+                        -
+                        <el-time-select
+                                size="mini"
+                                v-model="noLoginTime.endTime1"
+								:picker-options="{
+											start: '00:00',
+											step: '00:15',
+											end: '23:45'
+										 }">
+                        </el-time-select>
+                    </el-row>
+                    <el-row style="padding: 5px 0">
+                        <span class="setting-item-tit">时间段2</span>
+                        <el-time-select
+                                size="mini"
+                                v-model="noLoginTime.startTime2"
+								:picker-options="{
+											start: '00:00',
+											step: '00:15',
+											end: '23:45'
+										 }">
+                        </el-time-select>
+                        -
+                        <el-time-select
+                                size="mini"
+                                v-model="noLoginTime.endTime2"
+								:picker-options="{
+											start: '00:00',
+											step: '00:15',
+											end: '23:45'
+										 }">
+                        </el-time-select>
+                    </el-row>
+                    <el-row style="padding: 5px 0">
+                        <el-button type="primary" size="mini" @click="changeNoLoginTime">保存</el-button>
+                    </el-row>
+                </el-col>
+            </el-row>
+        </el-card>
+        <el-card class="part-card" shadow="hover">
+            <div slot="header" style="font-size: 15px">
+                <span>数据库信息</span>
+            </div>
+            <el-row>
+                <el-col class="col-item" :span="12" style="border-right: 1px solid #ebeef5;">
+                    <div class="info-item">
+                        <span class="info-item-tit">ip</span>
+                        <span class="info-item-val" v-if="!changeIp.flag">{{database.ip}}</span>
+                        <el-input size="mini" v-if="changeIp.flag" v-model="changeIp.new_ip"
+                                  style="display: inline-block; width: 150px"></el-input>
+                        <el-button v-if="!changeIp.flag" class="info-edit-btn" type="text"
+                                   @click="changeIp.flag=true">
+                            <i class="el-icon-edit-outline el-icon--right"></i>
+                            修改
+                        </el-button>
+                        <el-button v-if="changeIp.flag"
+                                   type="text"
+                                   @click="updateIp"
+                                   style="margin-left: 10px"
+                                   class="font-12">保存
+                        </el-button>
+                        <el-button v-if="changeIp.flag"
+                                   type="text"
+                                   @click="changeIp.flag=false"
+                                   class="font-12">取消
+                        </el-button>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-item-tit">端口</span>
+                        <span class="info-item-val" v-if="!changePort.flag">{{database.port}}</span>
+                        <el-input size="mini" v-if="changePort.flag" v-model="changePort.new_port"
+                                  style="display: inline-block; width: 150px"></el-input>
+                        <el-button v-if="!changePort.flag" class="info-edit-btn" type="text"
+                                   @click="changePort.flag=true">
+                            <i class="el-icon-edit-outline el-icon--right"></i>
+                            修改
+                        </el-button>
+                        <el-button v-if="changePort.flag"
+                                   type="text"
+                                   @click="updatePort"
+                                   style="margin-left: 10px"
+                                   class="font-12">保存
+                        </el-button>
+                        <el-button v-if="changePort.flag"
+                                   type="text"
+                                   @click="changePort.flag=false"
+                                   class="font-12">取消
+                        </el-button>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-item-tit">库名</span>
+                        <span class="info-item-val" v-if="!changeDatabaseName.flag">{{database.databaseName}}</span>
+                        <el-input size="mini" v-if="changeDatabaseName.flag" v-model="changeDatabaseName.new_name"
+                                  style="display: inline-block; width: 150px"></el-input>
+                        <el-button v-if="!changeDatabaseName.flag" class="info-edit-btn" type="text"
+                                   @click="changeDatabaseName.flag=true">
+                            <i class="el-icon-edit-outline el-icon--right"></i>
+                            修改
+                        </el-button>
+                        <el-button v-if="changeDatabaseName.flag"
+                                   type="text"
+                                   @click="updateDatabaseName"
+                                   style="margin-left: 10px"
+                                   class="font-12">保存
+                        </el-button>
+                        <el-button v-if="changeDatabaseName.flag"
+                                   type="text"
+                                   @click="changeDatabaseName.flag=false"
+                                   class="font-12">取消
+                        </el-button>
+                    </div>
+                </el-col>
+                <el-col class="col-item" :span="12">
+                    <div class="info-item">
+                        <span class="info-item-tit">用户名</span>
+                        <span class="info-item-val" v-if="!changeUserName.flag">{{database.username}}</span>
+                        <el-input size="mini" v-if="changeUserName.flag" v-model="changeUserName.new_username"
+                                  style="display: inline-block; width: 150px"></el-input>
+                        <el-button v-if="!changeUserName.flag" class="info-edit-btn" type="text"
+                                   @click="changeUserName.flag=true">
+                            <i class="el-icon-edit-outline el-icon--right"></i>修改
+                        </el-button>
+                        <el-button v-if="changeUserName.flag"
+                                   type="text"
+                                   @click="updateDatabaseUserName"
+                                   style="margin-left: 10px"
+                                   class="font-12">保存
+                        </el-button>
+                        <el-button v-if="changeUserName.flag"
+                                   type="text"
+                                   @click="changeUserName.flag=false"
+                                   class="font-12">取消
+                        </el-button>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-item-tit">密码</span>
+                        <span class="info-item-val" v-if="!changePassword.flag">{{database.password}}</span>
+                        <el-input size="mini" v-if="changePassword.flag" v-model="changePassword.new_password"
+                                  style="display: inline-block; width: 150px"></el-input>
+                        <el-button v-if="!changePassword.flag" class="info-edit-btn" type="text"
+                                   @click="changePassword.flag=true">
+                            <i class="el-icon-edit-outline el-icon--right"></i>修改
+                        </el-button>
+                        <el-button v-if="changePassword.flag"
+                                   type="text"
+                                   @click="updateDatabasePassword"
+                                   style="margin-left: 10px"
+                                   class="font-12">保存
+                        </el-button>
+                        <el-button v-if="changePassword.flag"
+                                   type="text"
+                                   @click="changePassword.flag=false"
+                                   class="font-12">取消
+                        </el-button>
+                    </div>
+                </el-col>
+            </el-row>
+        </el-card>
+        <el-card class="part-card"
+                 shadow="hover"
+                 element-loading-text="数据同步中，请勿进行其他操作"
+                 element-loading-spinner="el-icon-loading"
+                 element-loading-background="rgba(0, 0, 0, 0.8)"
+                 v-loading.fullscreen.lock="loading">
+            <div slot="header" style="font-size: 15px">
+                <span>数据库同步</span>
+                <el-button size="small"
+                           type="primary"
+                           class="right-btn"
+                           style="margin-top: -6px"
+                           plain
+                           @click="tb('all')">一键同步
+                </el-button>
+            </div>
+            <el-row v-for="item in tbDatabase.data" class="info-item" style="padding: 5px 20px;">
+                <el-col :span="4">
+                    <span class="info-item-tit">表</span>
+                    <span class="info-item-val">{{item.tableName}}</span>
+                </el-col>
+                <el-col :span="8" class="textAlign font-12">
+                    上次同步于：{{item.date}}
+                </el-col>
+                <el-col :span="8" class="textAlign font-12">
+                    共同步了{{item.tableInfo}}条数据
+                </el-col>
+                <el-col :span="4" style="text-align: right">
+                    <el-button type="primary" size="mini" plain @click="tb(item.tableName)">同步</el-button>
+                </el-col>
+            </el-row>
+        </el-card>
+    </el-main>
+</el-container>
+</body>
+<script>
+    new Vue({
+        el: "#app",
+        created: function () {
+            this.getSystemInfo();
+            this.getDatabaseInfo();
+            this.getDatabaseTBInfo();
+        },
+        data: {
+            controlTime: false,
+            backupControlTime: false,
+            noLoginTime: {
+                startTime1: '',
+                endTime1: '',
+                startTime2: '',
+                endTime2: ''
+            },
+            database: {
+                ip: '',
+                port: '',
+                databaseName: '',
+                username: '',
+                password: ''
+            },
+            changeIp: {
+                flag: false,
+                new_ip: ''
+            },
+            changePort: {
+                flag: false,
+                new_port: ''
+            },
+            changeDatabaseName: {
+                flag: false,
+                new_name: ''
+            },
+            changeUserName: {
+                flag: false,
+                new_username: ''
+            },
+            changePassword: {
+                flag: false,
+                new_password: ''
+            },
+            tbDatabase: {
+                data: []
+            },
+            loading: false
+        },
+        methods: {
+            //获取系统设置信息
+            getSystemInfo: function () {
+                requestGet("getSystemInfo", {}, response => {
+                    let result = response.data;
+                    let isControl = result.iscontrol;
+                    if (isControl == '0') {
+                        this.controlTime = false;
+                        this.backupControlTime = false;
+                    } else if (isControl == '1') {
+                        this.controlTime = true;
+                        this.backupControlTime = true;
+                    }
+                    this.noLoginTime.startTime1 = result.start_time1;
+                    this.noLoginTime.endTime1 = result.end_time1;
+                    this.noLoginTime.startTime2 = result.start_time2;
+                    this.noLoginTime.endTime2 = result.end_time2;
+                })
+            },
+
+            //获取数据库信息
+            getDatabaseInfo: function () {
+                let that = this;
+                requestGet("findDatabaseInfo", {}, response => {
+                    that.database = {
+                        ip: response.data.ip,
+                        port: response.data.port,
+                        databaseName: response.data.databaseName,
+                        username: response.data.userName,
+                        password: response.data.password
+                    };
+                }, () => {
+                    this.$message.error("获取数据库信息失败");
+                });
+            },
+
+            //获取数据库同步信息
+            getDatabaseTBInfo: function () {
+                requestGet("findAllDatabaseTBInfo", {}, response => {
+                    this.tbDatabase.data = response.data;
+                }, () => {
+                    this.$message.error("获取数据库同步信息失败");
+                });
+            },
+
+            //修改报工时间控制
+            changeControlTime: function () {
+                requestPost("updateSystemInfoButton", {
+                    iscontrol: this.controlTime ? '1' : '0'
+                }, response => {
+                    if (response.data == 1) {
+                        this.$message.success("更改成功");
+                        this.backupControlTime = this.controlTime;
+                    } else {
+                        this.$message.error("更改失败");
+                        this.controlTime = this.backupControlTime;
+                    }
+                }, () => {
+					this.$message.error("网络异常");
+				})
+            },
+
+			//修改不能登录时间
+			changeNoLoginTime: function () {
+                if (!this.noLoginTime.startTime1 && this.noLoginTime.endTime1) {
+                    this.$message.error("时间段填写不正确");
+                    return;
+                }
+
+                if (this.noLoginTime.startTime1 && !this.noLoginTime.endTime1) {
+                    this.$message.error("时间段填写不正确");
+                    return;
+                }
+
+                if (!this.noLoginTime.startTime2 && this.noLoginTime.endTime2) {
+                    this.$message.error("时间段填写不正确");
+                    return;
+                }
+
+                if (this.noLoginTime.startTime2 && !this.noLoginTime.endTime2) {
+                    this.$message.error("时间段填写不正确");
+                    return;
+                }
+
+                let requestObj = {
+                    start_time1: '',
+                    end_time1: '',
+                    start_time2: '',
+                    end_time2: ''
+                }
+
+                if (this.noLoginTime.startTime1 && this.noLoginTime.endTime1) {
+                    requestObj.start_time1 = this.noLoginTime.startTime1;
+                    requestObj.end_time1 = this.noLoginTime.endTime1;
+                }
+
+                if (this.noLoginTime.startTime2 && this.noLoginTime.endTime2) {
+                    requestObj.start_time2 = this.noLoginTime.startTime2;
+                    requestObj.end_time2 = this.noLoginTime.endTime2;
+                }
+
+				requestPost("updateSystemInfoTimePicker", requestObj, response => {
+					if (response.data == 1) {
+						this.$message.success("更改成功");
+					} else {
+						this.$message.error("更改失败");
+					}
+				}, () => {
+					this.$message.error("网络异常");
+				})
+			},
+
+            //修改数据库IP
+            updateIp: function () {
+                let that = this;
+                requestGet("updateIp", {
+                    ip: that.changeIp.new_ip
+                }, response => {
+                    if (response.data == 1) {
+                        that.database.ip = that.changeIp.new_ip;
+                        that.$message.success("修改成功");
+                    } else {
+                        that.$message.error("修改失败");
+                    }
+                    that.changeIp.flag = false;
+                }, () => {
+                    that.$message.error("网络异常");
+                    that.changeIp.flag = false;
+                });
+            },
+
+            //修改数据库端口
+            updatePort: function () {
+                let that = this;
+                requestGet("updatePort", {
+                    port: that.changePort.new_port
+                }, response => {
+                    if (response.data == 1) {
+                        that.database.port = that.changePort.new_port;
+                        that.$message.success("修改成功");
+                    } else {
+                        that.$message.error("修改失败");
+                    }
+                    that.changePort.flag = false;
+                }, () => {
+                    that.$message.error("网络异常");
+                    that.changePort.flag = false;
+                });
+            },
+
+            //修改数据库库名
+            updateDatabaseName: function () {
+                let that = this;
+                requestGet("updateDatabaseName", {
+                    databaseName: that.changeDatabaseName.new_name
+                }, response => {
+                    if (response.data == 1) {
+                        that.database.databaseName = that.changeDatabaseName.new_name;
+                        that.$message.success("修改成功");
+                    } else {
+                        that.$message.error("修改失败");
+                    }
+                    that.changeDatabaseName.flag = false;
+                }, () => {
+                    that.$message.error("网络异常");
+                    that.changeDatabaseName.flag = false;
+                });
+            },
+
+            //修改数据库用户名
+            updateDatabaseUserName: function () {
+                let that = this;
+                requestGet("updateDatabaseUserName", {
+                    userName: that.changeUserName.new_username
+                }, response => {
+                    if (response.data == 1) {
+                        that.database.username = that.changeUserName.new_username;
+                        that.$message.success("修改成功");
+                    } else {
+                        that.$message.error("修改失败");
+                    }
+                    that.changeUserName.flag = false;
+                }, () => {
+                    that.$message.error("网络异常");
+                    that.changeUserName.flag = false;
+                });
+            },
+
+            //修改数据库密码
+            updateDatabasePassword: function () {
+                let that = this;
+                requestGet("updateDatabasePassword", {
+                    password: that.changePassword.new_password
+                }, response => {
+                    if (response.data == 1) {
+                        that.database.password = that.changePassword.new_password;
+                        that.$message.success("修改成功");
+                    } else {
+                        that.$message.error("修改失败");
+                    }
+                    that.changePassword.flag = false;
+                }, () => {
+                    that.$message.error("网络异常");
+                    that.changePassword.flag = false;
+                });
+            },
+
+            //同步数据库
+            tb: function (databaseName) {
+                let that = this;
+                this.loading = true;
+                requestPost("TBdataBaseInfoByQueryString", {
+                    databaseName: databaseName
+                }, response => {
+                    if (response.data == 1) {
+                        that.$message.success("同步成功");
+                        that.getDatabaseTBInfo();
+                    } else {
+                        that.$message.error("同步失败");
+                    }
+                    that.loading = false;
+                }, () => {
+                    that.$message.error("网络异常");
+                    that.loading = false;
+                })
+            }
+        },
+        watch: {
+            'changeIp.flag': function () {
+                if (this.changeIp.flag)
+                    this.changeIp.new_ip = this.database.ip;
+            },
+            'changePort.flag': function () {
+                if (this.changePort.flag)
+                    this.changePort.new_port = this.database.port;
+            },
+            'changeDatabaseName.flag': function () {
+                if (this.changeDatabaseName.flag)
+                    this.changeDatabaseName.new_name = this.database.databaseName;
+            },
+            'changeUserName.flag': function () {
+                if (this.changeUserName.flag)
+                    this.changeUserName.new_username = this.database.username;
+            },
+            'changePassword.flag': function () {
+                if (this.changePassword.flag)
+                    this.changePassword.new_password = this.database.password;
+            }
+        }
+    });
+</script>
+</html>

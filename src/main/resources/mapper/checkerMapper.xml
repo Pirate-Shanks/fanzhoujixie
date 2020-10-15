@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.baogong.dao.CheckerDao">
+    <select id="findAllWorkSection" resultType="string">
+        select DISTINCT workspace from worktime order by workspace
+    </select>
+
+    <select id="findListByName" resultType="string">
+        select user_id from checkwork where work_space =#{name} and check_identify =#{id}
+    </select>
+
+    <insert id="itemInsert" parameterType="com.baogong.pojo.CheckerItem" >
+        insert into checkwork (user_id,check_identify,work_space) values (#{user_id},#{check_identify},#{work_space})
+    </insert>
+
+    <update id="updateUserIdentify" parameterType="string">
+        update [user] set identify = 1 where user_id = #{user_id}
+    </update>
+    <update id="cancelUserIdentify" parameterType="string">
+        update [user] set identify = 0 where user_id = #{user_id}
+    </update>
+
+    <update id="setFrozen" parameterType="string">
+        update [user] set identify = -1,del_date=#{datetime} where user_id = #{user_id}
+    </update>
+    <update id="cancelFrozen" parameterType="string">
+        update [user] set identify = 0,del_date='2200-01-01' where user_id = #{user_id}
+    </update>
+
+    <select id="findAllCheckers" resultType="com.baogong.pojo.User">
+        select distinct * from [user] where identify = 1 order by user_local
+    </select>
+    <delete id="deleteCheckWorkItem" parameterType="string">
+        delete  from checkwork where user_id=#{user_id}
+    </delete>
+
+    <delete id="deleteWorkSpaceCheker" parameterType="string">
+        delete from checkwork where work_space=#{work_space}
+    </delete>
+
+    <delete id="itemDelete" parameterType="com.baogong.pojo.CheckerItem">
+        delete from checkwork where work_space=#{work_space} and user_id = #{user_id} and check_identify = #{check_identify}
+    </delete>
+
+    <select id="selectItemIsAlive" resultType="int">
+        select count (*) from checkwork where work_space=#{work_space} and user_id = #{user_id} and check_identify = #{check_identify}
+    </select>
+
+    <insert id="managerAddLocal">
+        insert into localInfo (local_id,user_local_name) values (#{local_id},#{local_name})
+    </insert>
+    <insert id="managerAddWorkSpace">
+        insert into worktime (id,workspace) values (#{local_id},#{local_name})
+    </insert>
+    <delete id="managerDeleteLocal">
+        delete from localInfo where user_local_name=#{local_name}
+    </delete>
+    <delete id="managerDeleteWorkSpace">
+        delete from worktime where workspace=#{local_name}
+    </delete>
+    <delete id="DeleteworkSpace">
+        delete from checkwork where work_space=#{local_name}
+    </delete>
+</mapper>

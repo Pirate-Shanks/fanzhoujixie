@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>个人信息</title>
+		<link rel="stylesheet" href="css/main.css">
+		<link rel="stylesheet" href="element-ui/packages/theme-chalk/lib/index.css">
+		<script src="js/vue/dist/vue.min.js"></script>
+		<script src="js/index.js"></script>
+		<script src="js/axios.min.js"></script>
+		<script src="js/main.js"></script>
+		<style>
+			.part-card {
+				margin-bottom: 20px;
+			}
+
+			.el-card__body {
+				padding: 20px 0;
+			}
+
+			.col-item {
+				padding: 0 20px;
+			}
+
+			.info-item {
+				line-height: 30px;
+			}
+
+			.info-item .info-item-tit {
+				font-size: 14px;
+				color: #8c939d;
+				margin-right: 20px;
+			}
+
+			.info-item .info-item-val {
+				font-size: 12px;
+				color: #333;
+			}
+
+			.info-item .info-edit-btn {
+				padding: 0;
+			}
+
+			.el-dialog__header{
+				background: #409EFF !important;
+				color: #ffffff;
+			}
+
+			.el-dialog__title{
+				color: #ffffff !important;
+				font-size: 15px;
+			}
+
+			.el-dialog__body {
+				padding-bottom: 10px;
+			}
+
+			.el-dialog__footer {
+				padding-top: 0;
+			}
+		</style>
+	</head>
+	<body>
+		<el-container id="app" style="height: 100%; width: 100%; min-width: 1000px">
+			<el-header style="height: 56px; line-height: 56px; font-size: 20px; background: #fff;">
+				<span>个人信息</span>
+			</el-header>
+			<el-main style="background-color: #f4f4f4; padding: 20px;">
+				<el-card class="part-card" shadow="hover">
+					<div slot="header" style="font-size: 15px">
+						<span>基本信息</span>
+					</div>
+					<el-row>
+						<el-col class="col-item" :span="12" style="border-right: 1px solid #ebeef5;">
+							<div class="info-item">
+								<span class="info-item-tit">员工编号</span>
+								<span class="info-item-val">{{user.user_id}}</span>
+							</div>
+							<div class="info-item">
+								<span class="info-item-tit">员工姓名</span>
+								<span class="info-item-val">{{user.user_name}}</span>
+							</div>
+							<div class="info-item">
+								<span class="info-item-tit">员工性别</span>
+								<span class="info-item-val">{{user.sex || "未填写"}}</span>
+								<el-button class="info-edit-btn"
+										   type="text"
+										   @click="dialog.changeSex.showDialog=true">
+									<i class="el-icon-edit-outline el-icon--right"></i>
+									修改
+								</el-button>
+							</div>
+							<div class="info-item">
+								<span class="info-item-tit">员工年龄</span>
+								<span class="info-item-val">{{user.year_old>0?user.year_old+"岁":"未填写"}}</span>
+								<el-button class="info-edit-btn"
+										   type="text"
+										   @click="dialog.changeAge.showDialog=true">
+									<i class="el-icon-edit-outline el-icon--right"></i>
+									修改
+								</el-button>
+							</div>
+						</el-col>
+						<el-col class="col-item" :span="12">
+							<div class="info-item">
+								<span class="info-item-tit">登录账号</span>
+								<span class="info-item-val">{{user.user_id}}</span>
+							</div>
+							<div class="info-item">
+								<span class="info-item-tit">登录密码</span>
+								<span class="info-item-val">{{user.password}}</span>
+								<el-button class="info-edit-btn"
+										   type="text"
+										   @click="dialog.changePassword.showDialog=true">
+									<i class="el-icon-edit-outline el-icon--right"></i>
+									修改
+								</el-button>
+							</div>
+							<div class="info-item">
+								<span class="info-item-tit">电话号码</span>
+								<span class="info-item-val">{{user.user_telephone || "未填写"}}</span>
+								<el-button class="info-edit-btn"
+										   type="text"
+										   @click="dialog.changeTelephone.showDialog=true">
+									<i class="el-icon-edit-outline el-icon--right"></i>
+									修改
+								</el-button>
+							</div>
+						</el-col>
+					</el-row>
+				</el-card>
+				<el-row :gutter="20">
+					<el-col :span="12">
+						<el-card shadow="hover">
+							<div slot="header" style="font-size: 15px">
+								<span>工作信息</span>
+							</div>
+							<el-row>
+								<el-col class="col-item" :span="24">
+									<div class="info-item">
+										<span class="info-item-tit">部门编号</span>
+										<span class="info-item-val">{{user.user_local || "未填写"}}</span>
+									</div>
+									<div class="info-item">
+										<span class="info-item-tit">部门名称</span>
+										<span class="info-item-val">{{user.user_local_name || "未填写"}}</span>
+									</div>
+								</el-col>
+							</el-row>
+						</el-card>
+					</el-col>
+					<el-col :span="12">
+						<el-card shadow="hover">
+							<div slot="header" style="font-size: 15px">
+								<span>权限信息</span>
+							</div>
+							<el-row>
+								<el-col class="col-item" :span="24" style="border-right: 1px solid #ebeef5;">
+									<div class="info-item">
+										<span class="info-item-tit">账号身份</span>
+										<span class="info-item-val">{{user.identify | identifyFilter}}</span>
+									</div>
+									<div class="info-item">
+										<span class="info-item-tit">账号权限</span>
+										<span class="info-item-val">武汉泛洲机械制造有限公司所有权限</span>
+									</div>
+								</el-col>
+							</el-row>
+						</el-card>
+					</el-col>
+				</el-row>
+				<el-card shadow="hover" v-if="user.identify==1" style="margin-top: 20px">
+					<div slot="header" style="font-size: 15px">
+						<span>审核信息</span>
+					</div>
+					<el-row>
+						<el-col class="col-item" :span="24">
+							<div class="info-item">
+								<span class="info-item-tit">审核工段</span>
+								<el-tag v-for="item in check" style="margin-right: 10px; margin-bottom: 10px">
+									{{item}}
+								</el-tag>
+							</div>
+						</el-col>
+					</el-row>
+				</el-card>
+			</el-main>
+			<el-dialog width="300px"
+					   title="请选择性别"
+					   :visible.sync="dialog.changeSex.showDialog"
+					   :show-close="false"
+					   destroy-on-close>
+				<div class="dialog-content">
+					<el-form  ref="dialog.changeSex" :model="dialog.changeSex" :rules="rules" label-width="60px">
+						<el-form-item label="性别" prop="user_sex">
+							<el-select v-model="dialog.changeSex.user_sex" placeholder="请选择">
+								<el-option
+										v-for="item in dialog.sexOptions"
+										:key="item.value"
+										:label="item.value"
+										:value="item.value">
+								</el-option>
+							</el-select>
+						</el-form-item>
+					</el-form>
+				</div>
+				<div slot="footer">
+					<el-button size="small" @click="dialog.changeSex.showDialog=false;">取消</el-button>
+					<el-button size="small" type="primary" @click="changeSex('dialog.changeSex')" :loading="dialog.changeSex.isLoading">确定</el-button>
+				</div>
+			</el-dialog>
+			<el-dialog width="300px"
+					   title="请输入年龄"
+					   :visible.sync="dialog.changeAge.showDialog"
+					   :show-close="false"
+					   destroy-on-close>
+				<div class="dialog-content">
+					<el-form  ref="dialog.changeAge" :model="dialog.changeAge" :rules="rules" label-width="60px">
+						<el-form-item label="年龄" prop="user_age">
+							<el-input v-model.number="dialog.changeAge.user_age"
+									  placeholder="请输入年龄">
+							</el-input>
+						</el-form-item>
+					</el-form>
+				</div>
+				<div slot="footer">
+					<el-button size="small" @click="dialog.changeAge.showDialog=false;">取消</el-button>
+					<el-button size="small" type="primary" @click="changeAge('dialog.changeAge')" :loading="dialog.changeAge.isLoading">确定</el-button>
+				</div>
+			</el-dialog>
+			<el-dialog width="400px"
+					   title="请输入新密码"
+					   :visible.sync="dialog.changePassword.showDialog"
+					   :show-close="false"
+					   destroy-on-close>
+				<div class="dialog-content">
+					<el-form  ref="dialog.changePassword" :model="dialog.changePassword" :rules="rules" label-width="70px">
+						<el-form-item label="新密码" prop="user_password">
+							<el-input v-model="dialog.changePassword.user_password"
+									  placeholder="请输入新密码">
+							</el-input>
+						</el-form-item>
+					</el-form>
+				</div>
+				<div slot="footer">
+					<el-button size="small" @click="dialog.changePassword.showDialog=false;">取消</el-button>
+					<el-button size="small" type="primary" @click="changePassword('dialog.changePassword')" :loading="dialog.changePassword.isLoading">确定</el-button>
+				</div>
+			</el-dialog>
+			<el-dialog width="400px"
+					   title="请输入联系电话"
+					   :visible.sync="dialog.changeTelephone.showDialog"
+					   :show-close="false"
+					   destroy-on-close>
+				<div class="dialog-content">
+					<el-form  ref="dialog.changeTelephone" :model="dialog.changeTelephone" :rules="rules" label-width="70px">
+						<el-form-item label="电话号码" prop="user_telephone">
+							<el-input v-model="dialog.changeTelephone.user_telephone"
+									  placeholder="请输入电话号码">
+							</el-input>
+						</el-form-item>
+					</el-form>
+				</div>
+				<div slot="footer">
+					<el-button size="small" @click="dialog.changeTelephone.showDialog=false;">取消</el-button>
+					<el-button size="small" type="primary" @click="changeTelephone('dialog.changeTelephone')" :loading="dialog.changeTelephone.isLoading">确定</el-button>
+				</div>
+			</el-dialog>
+		</el-container>
+	</body>
+	<script type="text/javascript">
+		new Vue({
+			//挂载根节点
+			el: "#app",
+			//生命周期函数，在data之后调用
+			created: function() {
+				//从浏览器本地session缓存中读取用户数据
+				this.user = JSON.parse(window.sessionStorage.getItem("user"));
+				//如果为审核员则查询所审核工段
+				if(this.user.identify == 1) {
+					let that = this;
+					requestGet("queryMyWorkSection", {
+						user_id: this.user.user_id
+					}, response => {
+						if(response.data) {
+							that.check = response.data;
+						} else {
+							that.check = ['无'];
+						}
+					});
+				}
+			},
+			//数据
+			data: {
+				//用户数据
+				user: {},
+				check: [],
+				//弹出框数据
+				dialog: {
+					changeSex: {
+						//是否显示dialog
+						showDialog: false,
+						//更改性别变量
+						user_sex: '',
+						//提交按钮是否加载
+						isLoading: false
+					},
+					changeAge: {
+						//是否显示dialog
+						showDialog: false,
+						//更改性别变量
+						user_age: '',
+						//提交按钮是否加载
+						isLoading: false
+					},
+					changePassword: {
+						//是否显示dialog
+						showDialog: false,
+						//更改密码变量
+						user_password: '',
+						//提交按钮是否加载
+						isLoading: false
+					},
+					changeTelephone: {
+						//是否显示dialog
+						showDialog: false,
+						//更改电话号码变量
+						user_telephone: '',
+						//提交按钮是否加载
+						isLoading: false
+					},
+					sexOptions: [{
+						value: '男'
+					}, {
+						value: '女'
+					}]
+				},
+				//表单验证规则
+				rules: {
+					user_sex: [
+						{ required: true, message: '请选择性别' }
+					],
+					user_age: [
+						{ required: true, message: '请输入年龄' },
+						{ type: 'number', message: '年龄必须为数字值' }
+					],
+					user_password: [
+						{ required: true, message: '请输入新密码' }
+					],
+					user_telephone: [
+						{ validator: function(rule, value, callback){
+								if(/^1[3456789]\d{9}$/.test(value)) callback();
+								else callback(new Error('请填写正确的电话号码'));
+							}, trigger: 'blur'}
+					]
+				}
+			},
+			methods: {
+				//修改性别
+				changeSex: function(forName) {
+					let that = this;
+					formValidation(that, forName, () => {
+						that.dialog.changeSex.isLoading = true;
+						requestGet("updateSex", {
+							user_id: that.user.user_id,
+							user_sex: that.dialog.changeSex.user_sex
+						}, response => {
+							if(response.data == 1) {
+								that.$message.success("修改成功");
+								that.user.sex = that.dialog.changeSex.user_sex;
+								window.sessionStorage.setItem('user', JSON.stringify(that.user));
+							} else {
+								that.$message.error("修改失败");
+							}
+							that.dialog.changeSex.showDialog = false;
+						}, () => {
+							that.$message.error("网络异常");
+							that.dialog.changeSex.showDialog = false;
+						})
+					})
+				},
+				//修改密码
+				changePassword: function(formName) {
+					let that = this;
+					formValidation(that, formName, () => {
+						that.dialog.changePassword.isLoading = true;
+						requestGet("updatePassword", {
+							user_id: that.user.user_id,
+							password: that.dialog.changePassword.user_password
+						}, response => {
+							if(response.data == 1) {
+								that.$message.success("修改成功");
+								that.user.password = that.dialog.changePassword.user_password;
+								window.sessionStorage.setItem("user", JSON.stringify(that.user));
+							} else {
+								that.$message.error("修改失败");
+							}
+							that.dialog.changePassword.showDialog = false;
+						}, () => {
+							that.$message.error("网络异常");
+							that.dialog.changePassword.showDialog = false;
+						});
+					});
+				},
+				//修改年龄
+				changeAge: function(formName) {
+					let that = this;
+					formValidation(that, formName, () => {
+						that.dialog.changeAge.isLoading = true;
+						requestGet("updateYearOld", {
+							user_id: that.user.user_id,
+							year_old: that.dialog.changeAge.user_age
+						}, response => {
+							if(response.data == 1) {
+								that.$message.success("修改成功");
+								that.user.year_old = that.dialog.changeAge.user_age;
+								window.sessionStorage.setItem("user", JSON.stringify(that.user));
+							} else {
+								that.$message.error("修改失败");
+							}
+							that.dialog.changeAge.showDialog = false;
+						}, () => {
+							that.$message.error("网络异常");
+							that.dialog.changeAge.showDialog = false;
+						});
+					});
+				},
+				//修改电话号码
+				changeTelephone: function(formName) {
+					let that = this;
+					formValidation(that, formName, () => {
+						that.dialog.changeTelephone.isLoading = true;
+						updateTelephone({
+							user_id: that.user.user_id,
+							user_telephone: that.dialog.changeTelephone.user_telephone
+						}, () => {
+							that.$message.success("修改成功");
+							that.user.user_telephone = that.dialog.changeTelephone.user_telephone;
+							window.sessionStorage.setItem("user", JSON.stringify(that.user));
+							that.dialog.changeTelephone.showDialog = false;
+						}, () => {
+							that.$message.error("修改失败");
+							that.dialog.changeTelephone.showDialog = false;
+						}, () => {
+							that.$message.error("网络异常");
+							that.dialog.changeTelephone.showDialog = false;
+						});
+					})
+				}
+			},
+			filters: {
+				//身份过滤器
+				identifyFilter: identify => {
+					switch(identify) {
+						case 0: return "普通用户";
+						case 1: return "审核员";
+						case 2: return "系统管理员";
+					}
+				}
+			},
+			watch: {
+				'dialog.changeSex.showDialog': function() {
+					if(!this.dialog.changeSex.showDialog) {
+						this.dialog.changeSex.user_sex = '';
+						this.dialog.changeSex.isLoading = false;
+					}
+				},
+				'dialog.changeAge.showDialog': function() {
+					if(!this.dialog.changeAge.showDialog) {
+						this.dialog.changeAge.user_age = '';
+						this.dialog.changeAge.isLoading = false;
+					}
+				},
+				'dialog.changePassword.showDialog': function() {
+					if(!this.dialog.changePassword.showDialog) {
+						this.dialog.changePassword.user_password = '';
+						this.dialog.changePassword.isLoading = false;
+					}
+				},
+				'dialog.changeTelephone.showDialog': function() {
+					if(!this.dialog.changeTelephone.showDialog) {
+						this.dialog.changeTelephone.user_telephone = '';
+						this.dialog.changeTelephone.isLoading = false;
+					}
+				}
+			}
+		});
+	</script>
+</html>

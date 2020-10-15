@@ -1,0 +1,221 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.baogong.dao.TaskDao">
+
+    <insert id="taskInsert" parameterType="com.baogong.pojo.TaskItem" useGeneratedKeys="true">
+        insert  into task (TE001,TE004,TE005,TE006,TE007,TE008,TE009,TE010,TE011,TE014,TE015,TE017,TE018,TE019,TE020,
+        TE021,TE030,date,work_section,user_name,mac_name,work_tec_name,work_hour,mac_hour,CreatDate,primaryId,work_section_name,user_local_name,work_time) values (
+        #{TE001},#{TE004},#{TE005},#{TE006},#{TE007},#{TE008},#{TE009},#{TE010},#{TE011},#{TE014},#{TE015},#{TE017},#{TE018},#{TE019},#{TE020},
+        #{TE021},#{TE030},#{date},#{work_section},#{user_name},#{mac_name},#{work_tec_name},#{work_hour},#{mac_hour},#{CreatDate},#{primaryId},#{work_section_name},#{user_local_name},#{work_time}
+        )
+    </insert>
+
+    <select id="findpagesByTwoDate" resultType="int">
+        select count(*) from task where TE004 = #{user_id} and date between #{date1} and #{date2}
+    </select>
+    <select id="findPagesByProNameAndTwoDate" resultType="int">
+        <bind name="proName" value="'%' + proName + '%'"/>
+        select count(*) from task where TE004 = #{user_id} and date between #{date1} and #{date2} and TE018 like #{proName}
+    </select>
+
+    <select id="findById"  resultType="com.baogong.pojo.TaskItem">
+         select * from task where TE004 = #{id}
+        order by date desc ,CreatDate  desc
+        offset #{page} rows
+        fetch next 10 rows only;
+    </select>
+
+    <select id="findAllNum" parameterType="string" resultType="int">
+        select count(*) from task where TE004 = #{id}
+    </select>
+
+    <select id="findDateByTwoDate" resultType="com.baogong.pojo.TaskItem">
+        select * from task where TE004 = #{user_id} and date between #{date1} and #{date2} order by date,CreatDate desc
+         offset #{page} rows
+        fetch next 10 rows only;
+    </select>
+    <select id="findDataByProNameAndDate" resultType="com.baogong.pojo.TaskItem">
+        <bind name="name" value="'%' + name + '%'"/>
+        select * from task where TE004 = #{user_id}  and TE018 like #{name} and date between #{date1} and #{date2}  order by date desc,CreatDate desc
+         offset #{page} rows
+        fetch next 10 rows only;
+    </select>
+
+    <select id="findByDate" resultType="com.baogong.pojo.TaskItem">
+         select * from task where TE004 = #{id} and date =#{date}
+        order by date desc,CreatDate desc
+        offset #{page} rows
+        fetch next 10 rows only;
+    </select>
+    <select id="findAllNumBydate" parameterType="string" resultType="int">
+        select count(*) from task where TE004 = #{id} and date =#{date}
+    </select>
+
+    <select id="findByProName" resultType="com.baogong.pojo.TaskItem">
+        <bind name="name" value="'%' + name + '%'"/>
+         select * from task where TE004 = #{id} and TE018 like #{name}
+        order by date desc,CreatDate desc
+        offset #{page} rows
+        fetch next 10 rows only;
+    </select>
+    <select id="findAllNumByName" parameterType="string" resultType="int">
+        <bind name="name" value="'%' + name + '%'"/>
+        select count(*) from task where TE004 = #{id} and TE018 like #{name}
+    </select>
+
+    <select id="findPagesByProNameAndDate" parameterType="string" resultType="int">
+        select count(*) from task where TE004 = #{id} and TE018 =#{name} and date =#{date}
+    </select>
+
+    <select id="queryDataByProNameAndDate" resultType="com.baogong.pojo.TaskItem">
+         select * from task where TE004 = #{id} and TE018 =#{name} and date =#{date}
+        order by  date desc,CreatDate desc
+        offset #{page} rows
+        fetch next 10 rows only;
+    </select>
+
+    <update id="taskUpdate" parameterType="com.baogong.pojo.TaskItem">
+        update task set TE001 = #{TE001},TE005=#{TE005},TE006=#{TE006},TE007=#{TE007},TE008=#{TE008},TE009=#{TE009},TE010=#{TE010},TE011=#{TE011},TE014=#{TE014},TE015=#{TE015},TE017=#{TE017},TE018=#{TE018},TE019=#{TE019},TE020=#{TE020},
+        TE021=#{TE021},TE030=#{TE030},date=#{date},work_section=#{work_section},mac_name=#{mac_name},work_tec_name=#{work_tec_name},work_hour=#{work_hour},mac_hour=#{mac_hour},work_section_name=#{work_section_name},user_local_name=#{user_local_name},work_time=#{work_time} where primaryId = #{primaryId}
+    </update>
+
+    <select id="findCheckItemByUserId" parameterType="string" resultType="com.baogong.pojo.CheckerItem">
+        select DISTINCT * from checkwork where user_id = #{user_id}
+    </select>
+
+    <select id="findTaskItemByWorkSpace" parameterType="string" resultType="com.baogong.pojo.TaskItem">
+        select * from  task where user_local_name =#{workspace}  order by CreatDate desc,date desc
+    </select>
+
+    <update id="updateState" >
+        update task set TE014 = #{state} where primaryId = #{primaryId}
+    </update>
+
+    <select id="findWorkSpaceIdentify" parameterType="string" resultType="int">
+        select  MAX (check_identify) from checkwork where work_space = #{workSpace}
+    </select>
+
+    <select id="findTaskItemByWorkId" parameterType="string" resultType="com.baogong.pojo.TaskItem">
+        select * from task where primaryId = #{primaryId}
+    </select>
+
+    <select id="findTodayWorkHour" parameterType="string" resultType="double">
+        select work_hour from task where TE004=#{user_id} and date=#{date} and TE006!='5199'
+    </select>
+
+    <select id="findRemainAcount" resultType="double">
+        select sum(TE011) from task where TE006=#{reportType} and TE007 =#{reportId} and TE008=#{workProcedure} and TE014 != -1 and TE014 != 7
+    </select>
+
+    <select id="queryDataByPrimaryId" resultType="com.baogong.pojo.TaskItem">
+        select * from task where primaryId =#{primaryId}
+    </select>
+
+    <select id="findCheckItemByUserIdAndWorkSection" resultType="com.baogong.pojo.CheckerItem">
+        select * from checkwork where user_id =#{user_id} and work_space =#{workSection}
+    </select>
+    <select id="queryPagesByPublicPick" resultType="int">
+        <bind name="proName" value="'%' + proName + '%'"/>
+        <bind name="workTec" value="'%' + workTec + '%'"/>
+        <bind name="user_name" value="'%' + user_name + '%'"/>
+        select count(*) from task
+        where 1=1
+        <if test="date1!='' and date2!=''">
+            and date between #{date1} and #{date2}
+        </if>
+        <if test="proName!=''">
+            and TE018 LIKE #{proName}
+        </if>
+        <if test="workTec!=''">
+            and work_tec_name LIKE #{workTec}
+        </if>
+        <if test="user_name!=''">
+            and user_name LIKE #{user_name}
+        </if>
+    </select>
+
+    <select id="queryDataByPublicPick" resultType="com.baogong.pojo.TaskItem">
+        <bind name="proName" value="'%' + proName + '%'"/>
+        <bind name="workTec" value="'%' + workTec + '%'"/>
+        <bind name="user_name" value="'%' + user_name + '%'"/>
+        select * from task
+        where 1=1
+        <if test="date1!='' and date2!=''">
+            and date between #{date1} and #{date2}
+        </if>
+        <if test="proName!=''">
+            and TE018 LIKE #{proName}
+        </if>
+        <if test="workTec!=''">
+            and work_tec_name LIKE #{workTec}
+        </if>
+        <if test="user_name!=''">
+            and user_name LIKE #{user_name}
+        </if>
+        order by  date desc,CreatDate desc
+        offset #{page} rows
+        fetch next 10 rows only;
+    </select>
+
+<!--    and CreatDate between DATEADD(hh,-6,#{date}) and #{date}-->
+    <delete id="deleteTaskByWorkIdAndBeTweenDate">
+        delete  from task where primaryId = #{primaryId} and TE014 &lt;= 0
+    </delete>
+    <select id="findTodayTaskItemSize" resultType="com.baogong.pojo.TaskItem">
+        select * from task where date = #{date} and work_section =#{workSection} and TE001 = #{workType}
+    </select>
+    <select id="findAllToday" resultType="int">
+        select COUNT(DISTINCT TE002) from task where date =#{date}
+    </select>
+
+    <select id="findIsHavaChcker" resultType="int">
+        select count(*) from checkwork where work_space =#{workSection}
+    </select>
+
+    <delete id="deleteOwnTaskByMyself">
+        delete from task where primaryId =#{primaryId} and TE004 = #{user_id} and TE014 &lt;= 0
+    </delete>
+
+    <select id="queryPagesByUserTaskPick" resultType="int">
+        <bind name="proName" value="'%' + proName + '%'"/>
+        select count(*) from task
+        where TE004 = #{user_id}
+        <if test="date1!=''and date2!=''">
+            and date between #{date1} and #{date2}
+        </if>
+        <if test="proName!=''">
+            and TE018 LIKE #{proName}
+        </if>
+    </select>
+    <select id="queryDataByUserTaskPick" resultType="com.baogong.pojo.TaskItem">
+        <bind name="proName" value="'%' + proName + '%'"/>
+        select * from task
+        where TE004 = #{user_id}
+        <if test="date1!=''and date2!=''">
+            and date between #{date1} and #{date2}
+        </if>
+        <if test="proName!=''">
+            and TE018 LIKE #{proName}
+        </if>
+        order by  TE014 ASC,date desc
+        offset #{page} rows
+        fetch next 10 rows only;
+    </select>
+
+    <select id="findToDayXuhaoByWorkId" resultType="int">
+        select count(*) from task where TE002 =#{workId}
+    </select>
+    <select id="findTodayMaxWorkId" resultType="string">
+        select MAX(TE002) from task where date =#{date}
+    </select>
+    <select id="findToDayMaxXuhaoByWorkId" resultType="string">
+        select MAX(TE003) from task where TE002 =#{workId}
+    </select>
+    <update id="updateItem" parameterType="string">
+        update task set TE002=#{workId},TE003=#{xuhao} where primaryId =#{primaryId}
+    </update>
+
+    <update id="setBackInfo">
+        update task set back_info = #{message} where primaryId =#{primaryId}
+    </update>
+</mapper>

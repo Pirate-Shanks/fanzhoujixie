@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>管理员设置</title>
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="element-ui/packages/theme-chalk/lib/index.css">
+    <script src="js/vue/dist/vue.min.js"></script>
+    <script src="js/index.js"></script>
+    <script src="js/axios.min.js"></script>
+    <script src="js/main.js"></script>
+    <style>
+        .container {
+            height: 100%;
+            width: 100%;
+            min-width: 1000px;
+        }
+
+        .el-dialog__header {
+            background: #409EFF !important;
+        }
+
+        .el-dialog__header .el-dialog__title {
+            color: #ffffff !important;
+            font-size: 15px;
+        }
+
+        .el-dialog__body {
+            padding: 20px !important;
+        }
+
+        .el-dialog__wrapper {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-width: 1020px;
+        }
+
+        .el-dialog {
+            margin: 0 !important;
+        }
+
+        .el-dialog__footer {
+            padding-top: 0;
+        }
+    </style>
+</head>
+<body>
+<el-container id="app" class="container">
+    <el-header
+            style="height: 55px; background: #fff; padding: 14px 20px; box-sizing: border-box; border-bottom: 1px solid #999">
+        审核员设置
+        <el-button size="small" style="float: right" type="primary" @click="mulSet(2)" plain>批量设置二级</el-button>
+        <el-button size="small" style="float: right; margin-right: 10px" type="primary" @click="mulSet(1)" plain>
+            批量设置一级
+        </el-button>
+        <el-button size="small" style="float: right; margin-right: 10px" type="primary"
+                   @click="dialog.add.showDialog=true;" plain>添加工段
+        </el-button>
+    </el-header>
+    <el-main style="padding: 20px; background-color: #f4f4f4;">
+        <el-table :data="tableObject.tableData" @selection-change="select"
+                  v-loading.fullscreen.lock="tableObject.loadingData"
+                  element-loading-text="数据加载中"
+                  element-loading-spinner="el-icon-loading"
+                  element-loading-background="rgba(0, 0, 0, 0.8)"
+                  style="width: 100%;">
+            <el-table-column type="selection" min-width="10%"></el-table-column>
+            <el-table-column prop="work_space" label="工段名" min-width="20%" align="center"></el-table-column>
+            <el-table-column label="一级审核员" min-width="30%" align="center">
+                <template slot-scope="scope">
+                    <el-tag v-for="user in scope.row.list1"
+                            closable
+                            style="margin-right: 5px"
+                            @close="cancelChecker(scope.row.work_space, 1, user.user_id)">{{user.user_name}}
+                    </el-tag>
+                    <el-button v-if="scope.row.list1.length != 3"
+                               size="mini"
+                               type="warning"
+                               icon="el-icon-plus"
+                               @click="setChecker(scope.row, 1)"
+                               plain
+                               style="padding: 2px"></el-button>
+                </template>
+            </el-table-column>
+            <el-table-column label="二级审核员" min-width="30%" align="center">
+                <template slot-scope="scope">
+                    <el-tag v-for="user in scope.row.list2"
+                            closable
+                            style="margin-right: 5px"
+                            @close="cancelChecker(scope.row.work_space, 2, user.user_id)">{{user.user_name}}
+                    </el-tag>
+                    <el-button v-if="scope.row.list1.length != 3"
+                               size="mini" type="warning"
+                               icon="el-icon-plus"
+                               @click="setChecker(scope.row, 2)"
+                               plain
+                               style="padding: 2px">
+                    </el-button>
+                </template>
+            </el-table-column>
+            <el-table-column label="操作" min-width="10%">
+                <template slot-scope="scope">
+                    <el-button @click="deleteWorkSection(scope.row)" type="text" style="color: #F56C6C;">删除</el-button>
+                </template>
+            </el-table-column>
+        </el-table>
+    </el-main>
+    <el-dialog width="350px"
+               title="设置审核员"
+               :visible.sync="dialog.showDialog"
+               :show-close="false"
+               destroy-on-close>
+        <div class="dialog-content">
+            <el-form ref="dialog.dialogForm" :model="dialog.dialogForm" :rules="dialog.rules">
+                <el-form-item prop="user_id">
+                    <el-select v-model="dialog.dialogForm.user_id" placeholder="请选择" :destroy-on-close="true"
+                               style="width: 100%">
+                        <el-option
+                                v-for="item in dialog.userOption"
+                                :key="item.user_id"
+                                :label="'编号：' + item.user_id + ' 姓名：' + item.user_name"
+                                :value="item.user_id">
+                        </el-option>
+                    </el-select>
+                </el-form-item>
+            </el-form>
+        </div>
+        <div slot="footer">
+            <el-button size="small" @click="dialog.showDialog=false;">取消</el-button>
+            <el-button size="small" type="primary" @click="submit('dialog.dialogForm')" :loading="dialog.isLoading">确定
+            </el-button>
+        </div>
+    </el-dialog>
+    <el-dialog width="350px"
+               title="添加工段"
+               :visible.sync="dialog.add.showDialog"
+               :show-close="false"
+               destroy-on-close>
+        <div class="dialog-content">
+            <el-form ref="dialog.add.dialogForm" :model="dialog.add.dialogForm" :rules="dialog.rules">
+                <el-form-item prop="workSection" label="工段编号">
+                    <el-input v-model="dialog.add.dialogForm.workSection" placeholder="请输入工段编号"></el-input>
+                </el-form-item>
+                <el-form-item prop="workSectionName" label="工段名称">
+                    <el-input v-model="dialog.add.dialogForm.workSectionName" placeholder="请输入工段名称"></el-input>
+                </el-form-item>
+            </el-form>
+        </div>
+        <div slot="footer">
+            <el-button size="small" @click="dialog.add.showDialog=false;">取消</el-button>
+            <el-button size="small" type="primary" @click="addWorkSection('dialog.add.dialogForm')"
+                       :loading="dialog.add.isLoading">确定
+            </el-button>
+        </div>
+    </el-dialog>
+</el-container>
+</body>
+<script>
+    new Vue({
+        el: '#app',
+        created: function () {
+            this.queryData();
+        },
+        data: {
+            tableObject: {
+                tableData: [],
+                loadingData: false,
+                selections: []
+            },
+            dialog: {
+                showDialog: false,
+                isLoading: false,
+                dialogForm: {
+                    workspace: '',
+                    check_identify: '',
+                    user_id: ''
+                },
+                add: {
+                    showDialog: false,
+                    isLoading: false,
+                    dialogForm: {
+                        workSection: '',
+                        workSectionName: ''
+                    },
+                },
+                rules: {
+                    user_id: [
+                        {required: true, message: '请选择审核员'}
+                    ],
+                    workSection: [
+                        {required: true, message: '请填写工段编号'}
+                    ],
+                    workSectionName: [
+                        {required: true, message: '请填写工段名称'}
+                    ]
+                },
+                userOption: []
+            },
+            setting: {
+                type: 'single',
+                level: 1
+            }
+        },
+        methods: {
+            queryData: function () {
+                let that = this;
+                that.tableObject.loadingData = true;
+                requestGet("queryAllWorkSection", {}, response => {
+                    that.tableObject.tableData = response.data;
+                    that.tableObject.loadingData = false;
+                }, () => {
+                    that.tableObject.tableData = [];
+                    that.tableObject.loadingData = false;
+                });
+            },
+            queryCheckers: function () {
+                let that = this;
+                requestGet("queryCheckers", {}, response => {
+                    that.dialog.userOption = response.data;
+                }, () => {
+                    that.dialog.userOption = [];
+                    that.$message.error("网络异常");
+                })
+            },
+            setChecker: function (data, check_identify) {
+                this.dialog.dialogForm.workspace = data.work_space;
+                this.dialog.dialogForm.check_identify = check_identify;
+                this.queryCheckers();
+                this.dialog.showDialog = true;
+                this.setting.type = 'single';
+            },
+            cancelChecker: function (workspace, check_identify, user_id) {
+                let data = {
+                    workspace: workspace,
+                    check_identify: check_identify,
+                    user_id: user_id
+                };
+                let that = this;
+                requestGet("deleteCheckerList", data, response => {
+                    if (response.data == 1) {
+                        that.queryData();
+                        that.$message.success("删除成功");
+                        that.dialog.showDialog = false;
+                    } else {
+                        that.dialog.showDialog = false;
+                        that.$message.error("删除失败");
+                    }
+                }, () => {
+                    that.dialog.showDialog = false;
+                    that.$message.error("网络异常");
+                })
+            },
+            submit: function (formName) {
+                let that = this;
+                formValidation(that, formName, () => {
+                    that.dialog.isLoading = true;
+                    if (this.setting.type == 'single') {
+                        requestGet("setCheckerList", that.dialog.dialogForm, response => {
+                            if (response.data == 1) {
+                                that.queryData();
+                                that.$message.success("添加成功");
+                                that.dialog.showDialog = false;
+                            } else {
+                                that.dialog.showDialog = false;
+                                that.$message.error("添加失败");
+                            }
+                        }, () => {
+                            that.dialog.showDialog = false;
+                            that.$message.error("网络异常");
+                        });
+                    } else if (this.setting.type == 'mul') {
+                        requestGet("setManyCheckerList", {
+                            selections: this.tableObject.selections.join(),
+                            check_identify: this.setting.level,
+                            user_id: this.dialog.dialogForm.user_id
+                        }, response => {
+                            if (response.data == 1) {
+                                that.queryData();
+                                that.$message.success("添加成功");
+                                that.dialog.showDialog = false;
+                            } else {
+                                that.dialog.showDialog = false;
+                                that.$message.error("添加失败");
+                            }
+                        }, () => {
+                            that.dialog.showDialog = false;
+                            that.$message.error("网络异常");
+                        });
+                    }
+                });
+            },
+            select: function (data) {
+                this.tableObject.selections = [];
+                for (let i = 0; i < data.length; i++) {
+                    this.tableObject.selections[i] = data[i].work_space;
+                }
+            },
+            mulSet: function (level) {
+                if (this.tableObject.selections.length != 0) {
+                    this.queryCheckers();
+                    this.dialog.showDialog = true;
+                    this.setting.type = 'mul';
+                    this.setting.level = level;
+                }
+            },
+            addWorkSection: function (formName) {
+                formValidation(this, formName, () => {
+                    this.dialog.add.isLoading = true;
+                    requestGet("managerAddWorkSpace", {
+                        local_id: this.dialog.add.dialogForm.workSection,
+                        local_name: this.dialog.add.dialogForm.workSectionName
+                    }, response => {
+                        if (response.data == 1) {
+                            this.queryData();
+                            this.$message.success("添加成功");
+                        } else {
+                            this.$message.error("添加失败");
+                        }
+                        this.dialog.add.showDialog = false;
+                    }, () => {
+                        this.dialog.add.showDialog = false;
+                        this.$message.error("网络异常");
+                    })
+                })
+            },
+            deleteWorkSection: function (workSection) {
+                requestGet("managerDeleteWorkSpace", {
+                    local_name: workSection.work_space
+                }, response => {
+                    if (response.data == 1) {
+                        this.queryData();
+                        this.$message.success("删除成功");
+                    } else {
+                        this.$message.error("删除失败");
+                    }
+                }, () => {
+                    this.$message.error("网络异常");
+                })
+            }
+        },
+        watch: {
+            'dialog.showDialog': function () {
+                if (!this.dialog.showDialog) {
+                    this.dialog.dialogForm.user_id = '';
+                    this.dialog.isLoading = false;
+                }
+            },
+            'dialog.add.showDialog': function () {
+                if (!this.dialog.add.showDialog) {
+                    this.dialog.add.dialogForm.workSection = '';
+                    this.dialog.add.dialogForm.workSectionName = '';
+                    this.dialog.add.isLoading = false;
+                }
+            }
+        }
+    });
+</script>
+</html>

@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>写入ERP</title>
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="element-ui/packages/theme-chalk/lib/index.css">
+    <script src="js/vue/dist/vue.min.js"></script>
+    <script src="js/index.js"></script>
+    <script src="js/axios.min.js"></script>
+    <script src="js/main.js"></script>
+    <style>
+        .container {
+            height: 100%;
+            width: 100%;
+            min-width: 1000px;
+        }
+
+        .search-item {
+            float: left;
+        }
+
+        .header-search::after {
+            content: '';
+            display: block;
+            clear: both;
+        }
+
+        .el-dialog__header {
+            background: #409EFF !important;
+        }
+
+        .el-dialog__header .el-dialog__title {
+            color: #ffffff !important;
+            font-size: 15px;
+        }
+
+        .el-dialog__body {
+            padding: 20px !important;
+        }
+
+        .el-dialog__wrapper {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-width: 1020px;
+        }
+
+        .el-dialog {
+            margin: 0 !important;
+        }
+
+        .el-dialog__footer {
+            border-top: 1px solid #DCDFE6;
+        }
+
+        .el-form-item {
+            margin-bottom: 0;
+        }
+
+        .el-row {
+            padding: 15px 0;
+        }
+
+        .el-dialog .el-input__inner {
+            width: 240px !important;
+        }
+    </style>
+</head>
+<body>
+<el-container id="app" class="container">
+    <el-header
+            style="height: 55px; background: #fff; padding: 14px 20px; box-sizing: border-box; border-bottom: 1px solid #999">
+        <el-date-picker class="search-item"
+                        v-model="searchData.date"
+                        type="daterange"
+                        range-separator="至"
+                        start-placeholder="开始日期"
+                        end-placeholder="结束日期"
+                        value-format="yyyy-MM-dd"
+                        size="mini"
+                        style="width: 250px">
+        </el-date-picker>
+        <div class="search-item" style="padding: 0 10px; line-height: 28px; color: #606266">-</div>
+        <el-autocomplete class="search-item"
+                         v-model="searchData.proName"
+                         placeholder="产品名称"
+                         :fetch-suggestions="querySearchProName"
+                         :trigger-on-focus="false"
+                         style="width: 220px"
+                         size="mini">
+        </el-autocomplete>
+        <div class="search-item" style="padding: 0 10px; line-height: 28px; color: #606266">-</div>
+        <el-select v-model="searchData.workSection"
+                   class="search-item"
+                   placeholder="工作中心"
+                   style="width: 150px"
+                   @focus="queryCheckWorkSection"
+                   size="mini"
+                   clearable>
+            <el-option v-for="item in searchData.workSectionOption"
+                       :key="item.value"
+                       :label="item.label"
+                       :value="item.value">
+            </el-option>
+        </el-select>
+        <div class="search-item" style="padding: 0 10px; line-height: 28px; color: #606266">-</div>
+        <el-input class="search-item"
+                  v-model="searchData.employeeName"
+                  placeholder="员工姓名"
+                  style="width: 150px"
+                  size="mini"></el-input>
+        <div class="search-item" style="padding: 0 10px; line-height: 28px; color: #606266">-</div>
+        <el-button class="search-item" icon="el-icon-search" @click="querySearch" style="padding: 7px" plain
+                   size="mini"></el-button>
+        <el-checkbox style="float: right; line-height: 28px" v-model="onlyNoChecked" @change="queryNoChecked">只看未写入
+        </el-checkbox>
+        <el-button style="float: right; margin-right: 10px" @click="queryAllData" plain size="mini">全部</el-button>
+    </el-header>
+    <el-main style="padding: 20px; background-color: #f4f4f4;">
+        <el-table :data="tableObject.tableData" @selection-change="select"
+                  max-height="auto"
+                  v-loading.fullscreen.lock="tableObject.loadingData"
+                  element-loading-text="数据加载中"
+                  element-loading-spinner="el-icon-loading"
+                  element-loading-background="rgba(0, 0, 0, 0.8)"
+                  style="width: 100%; min-width: 900px;">
+            <el-table-column type="selection" min-width="5%" :selectable="isDisabled"></el-table-column>
+            <el-table-column prop="id" label="编号" min-width="5%" align="center"></el-table-column>
+            <el-table-column prop="date" label="日期" min-width="8%" align="center"></el-table-column>
+            <el-table-column prop="user_name" label="提交人" min-width="5%" align="center"></el-table-column>
+            <el-table-column prop="user_local_name" label="工作中心" min-width="7%" align="center"></el-table-column>
+            <el-table-column label="工单" min-width="12%" align="center">
+                <template slot-scope="scope">
+                    {{scope.row.reportType + " - " + scope.row.reportId}}
+                </template>
+            </el-table-column>
+            <el-table-column prop="proName" label="产品名称" min-width="10%" align="center"></el-table-column>
+            <el-table-column prop="proSize" label="产品规格" min-width="8%" align="center"></el-table-column>
+            <el-table-column prop="macName" label="机器名称" min-width="10%" align="center"></el-table-column>
+            <el-table-column prop="workTec" label="工艺" min-width="5%" align="center"></el-table-column>
+            <el-table-column prop="transferNum" label="数量" min-width="5%" align="center"></el-table-column>
+            <el-table-column prop="work_hour" label="工时" min-width="5%" align="center"></el-table-column>
+            <el-table-column prop="state" label="状态" min-width="10%" align="center">
+                <template slot-scope="scope">
+                    <el-link v-if="scope.row.state==0" type="info" :underline="false" style="font-size: 12px;">
+                        待写入
+                    </el-link>
+                    <el-link v-else-if="scope.row.state==1" type="success" :underline="false" style="font-size: 12px;">
+                        已写入
+                    </el-link>
+                </template>
+            </el-table-column>
+            <el-table-column label="操作" min-width="10%" align="center">
+                <template slot-scope="scope">
+                    <el-button v-if="scope.row.state==0" type="text" size="small" @click="viewDetails(scope.row)">点击写入
+                    </el-button>
+                    <el-button v-else type="text" size="small" @click="viewDetails(scope.row)">查看</el-button>
+                </template>
+            </el-table-column>
+        </el-table>
+    </el-main>
+    <el-footer style="height: available; padding: 10px 20px; border-top: 1px solid #999">
+        <el-pagination
+                background
+                layout="prev, pager, next"
+                :page-size="10"
+                :total="tableObject.totalNum"
+                @current-change="queryDataByPageNum"
+                :current-page.sync="tableObject.currentPage"
+                style="display: inline-block">
+        </el-pagination>
+        <el-button size="small" type="success" style="float: right" @click="allWriteToERP" :loading="allWriteLoading">
+            一键写入
+        </el-button>
+        <el-button size="small" type="danger" style="float: right; margin-right: 10px"
+                   @click="function(){if(tableObject.selections.length != 0){backDialog.showDialog=true; backType='mul';}}">
+            一键退回
+        </el-button>
+    </el-footer>
+    <el-dialog
+            title="报工表详情"
+            :visible.sync="dialog.showDialog"
+            width="1080px"
+            center
+            destroy-on-close
+            :show-close="false">
+        <el-form ref="dialog.data" :model="dialog.data" label-width="100px">
+            <el-row :gutter="20">
+                <el-col :span="8">
+                    <el-form-item label="员工姓名">
+                        <el-input v-model="dialog.data.user_name" disabled></el-input>
+                    </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                    <el-form-item label="员工编号">
+                        <el-input v-model="dialog.data.user_id" disabled></el-input>
+                    </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                    <el-form-item label="日期">
+                        <el-input v-model="dialog.data.date" disabled></el-input>
+                    </el-form-item>
+                </el-col>
+            </el-row>
+            <el-row :gutter="20">
+                <el-col :span=8>
+                    <el-form-item label="产品名称">
+                        <el-input v-model="dialog.data.proName" disabled></el-input>
+                    </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                    <el-form-item label="产品规格">
+                        <el-input v-model="dialog.data.proSize" disabled></el-input>
+                    </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                    <el-form-item label="产品品号">
+                        <el-input v-model="dialog.data.proId" disabled></el-input>
+                    </el-form-item>
+                </el-col>
+            </el-row>
+            <el-row :gutter="20">
+                <el-col :span="8">
+                    <el-form-item label="报工类型" prop="workType">
+                        <el-select v-model="dialog.data.workType" placeholder="请选择" disabled>
+                            <el-option v-for="item in dialog.option.workTypeOption"
+                                       :key="item.value"
+                                       :label="item.label"
+                                       :value="item.value">
+                            </el-option>
+                        </el-select>
+                    </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                    <el-form-item label="工单单别">
+                        <el-input v-model="dialog.data.reportType" disabled></el-input>
+                    </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                    <el-form-item label="工单单号">
+                        <el-input v-model="dialog.data.reportId" disabled></el-input>
+                    </el-form-item>
+                </el-col>
+            </el-row>
+            <el-row :gutter="20">
+                <el-col :span="8">
+                    <el-form-item label="工艺名称">
+                        <el-input v-model="dialog.data.workTec" disabled></el-input>
+                    </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                    <el-form-item label="工段">
+                        <el-input v-model="dialog.data.workSectionName" disabled></el-input>
+                    </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                    <el-form-item label="工序编号">
+                        <el-input v-model="dialog.data.workProcedure" disabled></el-input>
+                    </el-form-item>
+                </el-col>
+            </el-row>
+            <el-row :gutter="20">
+                <el-col :span="8">
+                    <el-form-item label="机器名称">
+                        <el-input v-model="dialog.data.macName" disabled></el-input>
+                    </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                    <el-form-item label="机器编号">
+                        <el-input v-model="dialog.data.macId" disabled></el-input>
+                    </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                    <el-form-item label="机时">
+                        <el-input v-model="dialog.data.mac_hour" disabled></el-input>
+                    </el-form-item>
+                </el-col>
+            </el-row>
+            <el-row :gutter="20">
+                <el-col :span="8">
+                    <el-form-item label="转移数量">
+                        <el-input v-model="dialog.data.transferNum" disabled></el-input>
+                    </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                    <el-form-item label="报废数量">
+                        <el-input v-model="dialog.data.failNum" disabled></el-input>
+                    </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                    <el-form-item label="工时">
+                        <el-input v-model="dialog.data.work_hour" disabled></el-input>
+                    </el-form-item>
+                </el-col>
+            </el-row>
+            <el-row :gutter="20">
+                <el-col :span="8">
+                    <el-form-item label="班别">
+                        <el-input v-model="dialog.data.workTime" disabled></el-input>
+                    </el-form-item>
+                </el-col>
+            </el-row>
+            <el-row :gutter="20">
+                <el-col :span="16">
+                    <el-form-item label="备注">
+                        <el-input type="textarea" v-model="dialog.data.info" disabled></el-input>
+                    </el-form-item>
+                </el-col>
+            </el-row>
+        </el-form>
+        <div slot="footer">
+            <el-button size="small" @click="dialog.showDialog=false">返回</el-button>
+            <el-button v-if="dialog.data.state==0"
+                       size="small"
+                       @click="function(){backDialog.showDialog=true; backType='single';}"
+                       type="danger">
+                退回
+                <i class="el-icon-close el-icon--right"></i>
+            </el-button>
+            <el-button v-if="dialog.data.state==0"
+                       size="small"
+                       @click="writeToERP"
+                       type="success"
+                       :loading="dialog.isWriteLoading">
+                写入
+                <i class="el-icon-check el-icon--right"></i>
+            </el-button>
+        </div>
+    </el-dialog>
+    <el-dialog width="400px"
+               title="退回"
+               :visible.sync="backDialog.showDialog"
+               :show-close="false"
+               destroy-on-close
+               append-to-body
+               class="inner-dialog">
+        <div class="dialog-content">
+            <el-form ref="backDialog" :model="backDialog">
+                <el-form-item label="退回原因">
+                    <el-input type="textarea"
+                              placeholder="退回原因"
+                              v-model="backDialog.backInfo">
+                    </el-input>
+                </el-form-item>
+            </el-form>
+        </div>
+        <div slot="footer">
+            <el-button size="small" @click="backDialog.showDialog=false;">取消</el-button>
+            <el-button size="small" type="primary" @click="back" :loading="backDialog.isNoPassLoading">
+                确定
+            </el-button>
+        </div>
+    </el-dialog>
+</el-container>
+</body>
+<script>
+    new Vue({
+        el: "#app",
+        created: function () {
+            this.queryAllData();
+        },
+        data: {
+            searchData: {
+                date: null,
+                proName: '',
+                workSection: '',
+                employeeName: '',
+                workSectionOption: []
+            },
+            onlyNoChecked: true,
+            tableObject: {
+                tableData: [],
+                totalNum: 0,
+                currentPage: 1,
+                loadingData: false,
+                date: null,
+                proName: '',
+                workSection: '',
+                employeeName: '',
+                selections: []
+            },
+            dialog: {
+                showDialog: false,
+                data: {},
+                option: {
+                    workTypeOption: [{
+                        value: 'D401',
+                        label: '正常报工'
+                    }, {
+                        value: 'D402',
+                        label: '辅助报工'
+                    }]
+                },
+                isWriteLoading: false
+            },
+            backDialog: {
+                showDialog: false,
+                backInfo: '',
+                isNoPassLoading: false
+            },
+            backType: 'single',
+            allWriteLoading: false
+        },
+        methods: {
+            //查询工作中心
+            queryCheckWorkSection: function () {
+                let that = this;
+                requestGet("managerQueryAllWorkSpace", {}, response => {
+                    that.searchData.workSectionOption = [];
+                    that.searchData.workSectionOption[0] = {label: '全部', value: ' '};
+                    for (let i = 1; i - 1 < response.data.length; i++) {
+                        that.searchData.workSectionOption[i] = {value: response.data[i - 1]};
+                    }
+                }, () => {
+                    that.searchData.workSectionOption = [{label: '全部', value: ''}];
+                })
+            },
+
+            //是否可选中
+            isDisabled: function (row) {
+                if (row.state == 0) return 1;
+                else return 0;
+            },
+
+            //选择
+            select: function (data) {
+                this.tableObject.selections = [];
+                for (let i = 0; i < data.length; i++) {
+                    this.tableObject.selections[i] = data[i].primaryId;
+                }
+            },
+
+            //查看报工单详情
+            viewDetails: function (data) {
+                this.dialog.data = data;
+                this.dialog.showDialog = true;
+            },
+
+            //写入
+            writeToERP: function () {
+                let that = this;
+                that.dialog.isWriteLoading = true;
+                requestGet("managerPass", {
+                    primaryId: this.dialog.data.primaryId
+                }, response => {
+                    if (response.data == 1) {
+                        that.$message.success("操作成功");
+                        that.flushData();
+                    } else {
+                        that.$message.error("操作失败");
+                    }
+                    that.dialog.showDialog = false;
+                }, () => {
+                    that.$message.error("网络异常");
+                    that.dialog.showDialog = false;
+                });
+            },
+
+            //退回
+            back: function () {
+                if (this.backType === 'single') {
+                    this.backToUser();
+                } else if (this.backType === 'mul') {
+                    this.allBack();
+                }
+            },
+
+            //退回
+            backToUser: function () {
+                let that = this;
+                that.backDialog.isNoPassLoading = true;
+                requestGet("managerNotPass", {
+                    primaryId: that.dialog.data.primaryId,
+                    backInfo: that.backDialog.backInfo
+                }, response => {
+                    if (response.data == 1) {
+                        that.$message.success("操作成功");
+                        that.flushData();
+                    } else {
+                        that.$message.error("操作失败");
+                    }
+                    that.dialog.showDialog = false;
+                    that.backDialog.showDialog = false;
+                }, () => {
+                    that.$message.error("网络异常");
+                    that.dialog.showDialog = false;
+                    that.backDialog.showDialog = false;
+                })
+            },
+
+            //一键写入
+            allWriteToERP: function () {
+                if (this.tableObject.selections.length != 0) {
+                    this.allWriteLoading = true;
+                    requestGet("managerPassList", {
+                        selections: this.tableObject.selections.join()
+                    }, response => {
+                        this.$message.success("写入了" + response.data + "条数据");
+                        this.allWriteLoading = false;
+                        this.flushData();
+                    }, () => {
+                        this.$message.error("操作失败");
+                        this.allWriteLoading = false;
+                    })
+                }
+            },
+
+            //一键退回
+            allBack: function () {
+                if (this.tableObject.selections.length != 0) {
+                    let that = this;
+                    that.backDialog.isNoPassLoading = true;
+                    requestGet("managerNotPassList", {
+                        selections: this.tableObject.selections.join(),
+                        backInfo: that.backDialog.backInfo
+                    }, response => {
+                        if (response.data == 1) {
+                            that.$message.success("操作成功");
+                            that.flushData();
+                        } else {
+                            that.$message.error("操作失败");
+                        }
+                        that.backDialog.showDialog = false;
+                    }, () => {
+                        that.$message.error("操作失败");
+                        that.backDialog.showDialog = false;
+                    })
+                }
+            },
+
+            //刷新数据
+            flushData: function () {
+                this.queryDataNum();
+                this.queryDataByPageNum(this.tableObject.currentPage);
+            },
+
+            //搜索产品名称建议
+            querySearchProName: function (queryString, cb) {
+                autoCompleteQuery("queryProductName", queryString, cb)
+            },
+
+            //查询全部数据
+            queryAllData: function () {
+                this.tableObject.currentPage = 1;
+
+                this.tableObject.date = null;
+                this.tableObject.proName = '';
+                this.tableObject.workSection = '';
+                this.tableObject.employeeName = '';
+
+                //查询数据总数
+                this.queryDataNum();
+                //查询第一页数据
+                this.queryDataByPageNum(1);
+            },
+
+            //搜索查询
+            querySearch: function () {
+                this.tableObject.currentPage = 1;
+
+                this.tableObject.date = this.searchData.date;
+                this.tableObject.proName = this.searchData.proName;
+                this.tableObject.workSection = this.searchData.workSection;
+                this.tableObject.employeeName = this.searchData.employeeName;
+
+                //查询数据总数
+                this.queryDataNum();
+                //查询第一页数据
+                this.queryDataByPageNum(1);
+            },
+
+            //查询数据总数
+            queryDataNum: function () {
+                let that = this;
+
+                let CheckerPick = {
+                    date: this.tableObject.date,
+                    proName: this.tableObject.proName,
+                    employeeName: this.tableObject.employeeName,
+                    workSection: this.tableObject.workSection,
+                    state: this.onlyNoChecked ? 0 : 1
+                }
+
+                requestPost("managerCheckerPickPages", CheckerPick, response => {
+                    that.tableObject.totalNum = response.data;
+                })
+            },
+
+            //根据页数获取数据
+            queryDataByPageNum: function (pageNum) {
+                let that = this;
+
+                let CheckerPick = {
+                    date: this.tableObject.date,
+                    proName: this.tableObject.proName,
+                    employeeName: this.tableObject.employeeName,
+                    workSection: this.tableObject.workSection,
+                    pageNum: pageNum,
+                    state: this.onlyNoChecked ? 0 : 1
+                }
+
+                that.tableObject.loadingData = true;
+                requestPost("managerCheckerPickData", CheckerPick, response => {
+                    that.tableObject.tableData = response.data;
+                    that.tableObject.loadingData = false;
+                }, () => {
+                    that.tableObject.tableData = [];
+                    that.tableObject.loadingData = false;
+                    that.$message.error("网络异常");
+                })
+            },
+
+            queryNoChecked: function () {
+                this.tableObject.currentPage = 1;
+                this.queryDataNum();
+                this.queryDataByPageNum(1);
+            }
+        },
+        watch: {
+            'dialog.showDialog': function () {
+                if (!this.dialog.showDialog) {
+                    this.dialog.isWriteLoading = false;
+                    this.dialog.isBackLoading = false;
+                }
+            },
+            'backDialog.showDialog': function () {
+                if (!this.backDialog.showDialog) {
+                    this.backDialog.backInfo = '';
+                    this.backDialog.isNoPassLoading = false;
+                }
+            }
+        },
+        filters: {
+            transferTypeFilter: function (type) {
+                switch (type) {
+                    case 1:
+                        return '正常完成';
+                    case 2:
+                        return '返工完成';
+                    case 3:
+                        return '报废';
+                }
+            }
+        }
+    });
+</script>
+</html>

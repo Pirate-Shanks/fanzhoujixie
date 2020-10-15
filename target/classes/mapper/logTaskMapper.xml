@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.baogong.dao.logTask.LogTaskDao">
+    <insert id="insertTask" parameterType="com.baogong.pojo.LogTaskItem">
+        insert into logTask (checker_id,checkType,workType,workId,workNum,user_id,proName,user_name,checker_name,date,workSection)
+        values (#{checker_id},#{checkType},#{workType},#{workId},#{workNum},#{user_id},#{proName},#{user_name},#{checker_name},#{date},#{workSection})
+    </insert>
+
+    <select id="findAllOnConditions" resultType="com.baogong.pojo.LogTaskItem">
+        select * from logTask where 1=1
+        <if test="date1!='' and date2!=''">
+            and date between #{date1} and #{date2}
+        </if>
+        <if test="workSection!=''">
+            and workSection LIKE '%'+#{workSection}+'%'
+        </if>
+        order by date desc
+        offset #{page} rows
+        fetch next 10 rows only;
+    </select>
+    <select id="findAllPagesOnConditions" resultType="int">
+        select count (*) from logTask where 1=1
+        <if test="date1!='' and date2!=''">
+            and date between #{date1} and #{date2}
+        </if>
+        <if test="workSection!=''">
+            and workSection LIKE '%'+#{workSection}+'%'
+        </if>
+    </select>
+</mapper>

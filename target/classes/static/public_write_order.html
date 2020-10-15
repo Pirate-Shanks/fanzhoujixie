@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>填写报工申请表</title>
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="element-ui/packages/theme-chalk/lib/index.css">
+    <script src="js/vue/dist/vue.min.js"></script>
+    <script src="js/index.js"></script>
+    <script src="js/axios.min.js"></script>
+    <script src="js/main.js"></script>
+    <style>
+        .container {
+            width: 100%;
+            height: 100%;
+            min-width: 1050px;
+        }
+
+        .el-main {
+            background-color: #fcfcfc;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .el-form-item {
+            margin-bottom: 0;
+        }
+
+        .el-row {
+            padding: 20px 0;
+        }
+
+        .el-input__inner {
+            width: 240px !important;
+        }
+    </style>
+</head>
+<body>
+<el-container id="app" class="container">
+    <el-main>
+        <el-form ref="form" :model="form" label-width="100px" :rules="formRules">
+            <el-row :gutter="20">
+                <el-col :span="8">
+                    <el-form-item label="员工编号" prop="user_id">
+                        <el-input v-model="form.user_id" placeholder="请填写员工编号" @change="getUserNameByUserId"></el-input>
+                    </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                    <el-form-item label="员工姓名" prop="user_name">
+                        <el-input v-model="form.user_name" placeholder="填写员工编号以获取" disabled></el-input>
+                    </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                    <el-form-item label="日期" prop="date">
+                        <el-date-picker
+                                v-model="form.date"
+                                type="date"
+                                placeholder="选择日期"
+                                value-format="yyyy-MM-dd">
+                        </el-date-picker>
+                    </el-form-item>
+                </el-col>
+            </el-row>
+            <el-row :gutter="20">
+                <el-col :span=8>
+                    <el-form-item label="产品名称" prop="proName">
+                        <el-autocomplete
+                                v-model="form.proName"
+                                :fetch-suggestions="querySearchProName"
+                                placeholder="请输入产品名称"
+                                :trigger-on-focus="false"
+                        ></el-autocomplete>
+                    </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                    <el-form-item label="产品规格" prop="proSize">
+                        <el-select v-model="form.proSize"
+                                   placeholder="请选择"
+                                   @focus="queryProSize">
+                            <el-option v-for="item in formDataOption.proSizeOption"
+                                       :key="item.value"
+                                       :label="item.value"
+                                       :value="item.value">
+                            </el-option>
+                        </el-select>
+                    </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                    <el-form-item label="产品品号" prop="proId">
+                        <el-input v-model="form.proId" placeholder="选择产品规格以获取" disabled></el-input>
+                    </el-form-item>
+                </el-col>
+            </el-row>
+            <el-row :gutter="20">
+                <el-col :span="8">
+                    <el-form-item label="报工类型" prop="workType">
+                        <el-select v-model="form.workType" placeholder="请选择">
+                            <el-option v-for="item in formDataOption.workTypeOption"
+                                       :key="item.value"
+                                       :label="item.label"
+                                       :value="item.value">
+                            </el-option>
+                        </el-select>
+                    </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                    <el-form-item label="工单单别" prop="reportType">
+                        <el-select v-model="form.reportType"
+                                   placeholder="请选择"
+                                   @focus="queryReportType">
+                            <el-option v-for="item in formDataOption.reportTypeOption"
+                                       :key="item.value"
+                                       :label="item.label"
+                                       :value="item.value">
+                            </el-option>
+                        </el-select>
+                    </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                    <el-form-item label="工单单号" prop="reportId">
+                        <el-select v-model="form.reportId"
+                                   placeholder="请选择"
+                                   @focus="queryReportId">
+                            <el-option v-for="item in formDataOption.reportIdOption"
+                                       :key="item.value"
+                                       :label="item.value"
+                                       :value="item.value">
+                            </el-option>
+                        </el-select>
+                    </el-form-item>
+                </el-col>
+            </el-row>
+            <el-row :gutter="20">
+                <el-col :span="8">
+                    <el-form-item label="工艺名称" prop="workTecSelect">
+                        <el-select v-model="form.workTecSelect" placeholder="请选择"
+                                   @focus="queryWorkTec"
+                                   @change="selectWorkTec">
+                            <el-option v-for="item in formDataOption.workTecOption"
+                                       :key="item.index"
+                                       :label="item.name"
+                                       :value="item.index">
+                            </el-option>
+                        </el-select>
+                    </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                    <el-form-item label="工段" prop="workSection">
+                        <el-input v-model="form.workSectionName" placeholder="选择工艺以获取" disabled></el-input>
+                    </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                    <el-form-item label="工序编号" prop="workProcedure">
+                        <el-select v-model="form.workProcedure" placeholder="请选择"
+                                   @focus="queryWorkProcedure">
+                            <el-option v-for="item in formDataOption.workProcedureOption"
+                                       :key="item.value"
+                                       :label="item.value"
+                                       :value="item.value">
+                            </el-option>
+                        </el-select>
+                    </el-form-item>
+                </el-col>
+            </el-row>
+            <el-row :gutter="20">
+                <el-col :span="8">
+                    <el-form-item label="机器名称" prop="macName">
+                        <el-autocomplete
+                                v-model="form.macName"
+                                :fetch-suggestions="querySearchMacName"
+                                :trigger-on-focus="false"
+                                placeholder="请输入机器名称"
+                        ></el-autocomplete>
+                    </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                    <el-form-item label="机器编号" prop="macId">
+                        <el-select v-model="form.macId" placeholder="请选择"
+                                   @focus="queryMacId">
+                            <el-option v-for="item in formDataOption.macIdOption"
+                                       :key="item.value"
+                                       :label="item.value"
+                                       :value="item.value">
+                            </el-option>
+                        </el-select>
+                    </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                    <el-form-item label="机时" prop="mac_hour">
+                        <el-input type="number" placeholder="请填写机时" v-model.number="form.mac_hour"></el-input>
+                    </el-form-item>
+                </el-col>
+            </el-row>
+            <el-row :gutter="20">
+                <el-col :span="8">
+                    <el-form-item label="转移数量" prop="transferNum">
+                        <el-input type="number" placeholder="请填写转移数量" v-model.number="form.transferNum"></el-input>
+                    </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                    <el-form-item label="报废数量" prop="failNum">
+                        <el-input type="number" placeholder="请填写报废数量" v-model.number="form.failNum"></el-input>
+                    </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                    <el-form-item label="工时" prop="work_hour">
+                        <el-input type="number" placeholder="请填写工时" v-model.number="form.work_hour"></el-input>
+                    </el-form-item>
+                </el-col>
+            </el-row>
+            <el-row :gutter="20">
+                <el-col :span="8">
+                    <el-form-item label="班别" prop="workTime">
+                        <el-select v-model="form.workTime"
+                                   placeholder="请选择">
+                            <el-option :key="0" :label="'白班'" :value="'白班'"></el-option>
+                            <el-option :key="1" :label="'中班'" :value="'中班'"></el-option>
+                            <el-option :key="2" :label="'晚班'" :value="'晚班'"></el-option>
+                        </el-select>
+                    </el-form-item>
+                </el-col>
+            </el-row>
+            <el-row :gutter="20">
+                <el-col :span="16">
+                    <el-form-item label="备注">
+                        <el-input type="textarea" v-model="form.info"></el-input>
+                    </el-form-item>
+                </el-col>
+            </el-row>
+        </el-form>
+    </el-main>
+    <el-footer height="auto" style="padding: 10px 0; border-top: 1px solid #EBEEF5; text-align: center">
+        <el-button size="small" type="primary" @click="submit('form')" :loading="isSubmitLoading">确认提交</el-button>
+    </el-footer>
+    <el-dialog
+            title="提示"
+            :visible.sync="dialogVisible"
+            width="300px"
+            :close-on-click-modal="false"
+            :close-on-press-escape="false"
+            :show-close="false">
+        <span>提交成功</span>
+        <span slot="footer" class="dialog-footer">
+            <el-button type="primary" @click="window.location.href='public_write_order.html'">确 定</el-button>
+        </span>
+    </el-dialog>
+</el-container>
+</body>
+<script type="text/javascript">
+    var vue = new Vue({
+        el: '#app',
+        data: {
+            dialogVisible: false,
+            isSubmitLoading: false,
+            form: {
+                user_id: '',				//员工编号
+                user_name: '',				//员工姓名
+                date: getYesterday(),		//日期
+                workType: '',				//报工类型
+                reportType: '',				//工单单别
+                reportId: '',				//工单单号
+                macId: '',					//机器编号
+                macName: '',				//机器名称
+                mac_hour: '',				//机时
+                proName: '',				//产品名称
+                proSize: '',				//产品规格
+                proId: '',					//产品品号
+                workProcedure: '',			//工序编号
+                workTec: '',				//工艺名称
+                workTecId: '',				//工艺编号
+                workTecSelect: '',
+                workSection: '',			//工段编号
+                workSectionName: '',        //工段名称
+                failNum: 0,                 //报废数量
+                transferNum: '',			//转移数量
+                calType: 1,			    	//计算类型
+                work_hour: '',				//工时
+                workTime: '白班',           //班次
+                info: ''                    //备注
+            },
+            formDataOption: {
+                proSizeOption: [],
+                workTypeOption: [{
+                    value: 'D401',
+                    label: '正常报工'
+                }, {
+                    value: 'D402',
+                    label: '辅助报工'
+                }],
+                reportTypeOption: [],
+                reportIdOption: [],
+                workTecOption: [],
+                workSectionOption: [],
+                workProcedureOption: [],
+                macIdOption: []
+            },
+            formRules: {
+                user_name: [
+                    {required: true, message: '请填写员工姓名'}
+                ],
+                user_id: [
+                    {required: true, message: '请填写员工编号'}
+                ],
+                date: [
+                    {required: true, message: '请选择日期'}
+                ],
+                proName: [
+                    {required: true, message: '请填写产品名称'}
+                ],
+                proSize: [
+                    {required: true, message: '请选择产品规格'}
+                ],
+                proId: [
+                    {required: true, message: '请填写产品品号'}
+                ],
+                workType: [
+                    {required: true, message: '请选择报工类型'}
+                ],
+                reportType: [
+                    {required: true, message: '请选择工单单别'}
+                ],
+                reportId: [
+                    {required: true, message: '请选择工单单号'}
+                ],
+                macId: [
+                    {required: true, message: '请填写编号'}
+                ],
+                macName: [
+                    {required: true, message: '请填写机器名称'}
+                ],
+                mac_hour: [
+                    {required: true, message: '请填写机时'},
+                    {type: 'number', message: '机时必须为数字值'},
+                    {
+                        validator: function (rule, value, callback) {
+                            if (vue.form.mac_hour > 24) {
+                                callback("机时不能超过24小时")
+                            } else {
+                                callback();
+                            }
+                        }
+                    }
+                ],
+                workTecSelect: [
+                    {required: true, message: '请填写工艺'}
+                ],
+                workProcedure: [
+                    {required: true, message: '请选择工序'}
+                ],
+                workSection: [
+                    {required: true, message: '请填写工段'}
+                ],
+                failNum: [
+                    {required: true, message: '请填写报废数量'}
+                ],
+                transferNum: [
+                    {required: true, message: '请填写转移数量'},
+                    {type: 'number', message: '转移数量必须为数字值'},
+                    {
+                        validator: function (rule, value, callback) {
+                            if (vue.form.workType != 'D402') {
+                                requestGet("queryUserTransferNum", {
+                                    reportType: vue.form.reportType,
+                                    reportId: vue.form.reportId,
+                                    workProcedure: vue.form.workProcedure,
+                                    transferNum: vue.form.transferNum
+                                }, response => {
+                                    let result = response.data;
+                                    if (result == -1) {
+                                        callback("请先填写工单单别、工单单号、工序");
+                                    } else {
+                                        if (vue.form.transferNum > result) {
+                                            callback(new Error('剩余可报数量为' + result));
+                                        } else callback();
+                                    }
+                                });
+                            } else {
+                                callback();
+                            }
+                        }
+                    }
+                ],
+                work_hour: [
+                    {required: true, message: '请填写工时'},
+                    {type: 'number', message: '工时必须为数字值'},
+                    {
+                        validator: function (rule, value, callback) {
+                            if (vue.form.workType != 'D402') {
+                                requestGet("queryTodayWorkHour", {
+                                    user_id: vue.form.user_id,
+                                    date: vue.form.date
+                                }, response => {
+                                    let total = response.data;
+                                    if (vue.form.work_hour + total > 24)
+                                        callback(new Error('剩余可报工时为' + (24 - total)));
+                                    else callback();
+                                });
+                            } else {
+                                callback();
+                            }
+                        }
+                    }
+                ]
+            }
+        },
+        methods: {
+            //根据员工编号查询姓名
+            getUserNameByUserId: function () {
+                let that = this;
+                requestGet("queryUserNameByUserId", {
+                    user_id: this.form.user_id
+                }, response => {
+                    that.form.user_name = response.data;
+                });
+            },
+
+            //搜索产品名称建议
+            querySearchProName: function (queryString, cb) {
+                autoCompleteQuery("queryProductName", queryString, cb)
+            },
+
+            //搜索机器名称建议
+            querySearchMacName: function (queryString, cb) {
+                autoCompleteQuery("queryMachineName", queryString, cb)
+            },
+
+            //查询产品规格
+            queryProSize: function () {
+                let that = this;
+                requestGet("queryProductSize", {
+                    proName: that.form.proName
+                }, response => {
+                    let result = response.data;
+                    that.formDataOption.proSizeOption = [];
+                    if (result.length != 0) {
+                        for (let i = 0; i < result.length; i++) {
+                            that.formDataOption.proSizeOption[i] = {value: result[i]};
+                        }
+                    }
+                }, () => {
+                    that.formDataOption.proSizeOption = [];
+                });
+            },
+
+            //查询工单单别
+            queryReportType: function () {
+                if (this.form.workType == 'D402') {
+                    this.formDataOption.reportTypeOption = [{value: '5199'}];
+                } else {
+                    let that = this;
+                    requestGet("queryReportType", {
+                        proId: this.form.proId,
+                        workType: this.form.workType
+                    }, response => {
+                        let result = response.data;
+                        that.formDataOption.reportTypeOption = [];
+                        if (result.length != 0) {
+                            for (let i = 0; i < result.length; i++) {
+                                that.formDataOption.reportTypeOption[i] = {value: result[i]};
+                            }
+                        }
+                    }, () => {
+                        that.formDataOption.reportTypeOption = [];
+                    });
+                }
+            },
+
+            //查询工单单号
+            queryReportId: function () {
+                let that = this;
+                requestGet("queryReportId", {
+                    proId: that.form.proId,
+                    reportType: that.form.reportType
+                }, response => {
+                    let result = response.data;
+                    that.formDataOption.reportIdOption = [];
+                    if (result.length != 0) {
+                        for (let i = 0; i < result.length; i++) {
+                            that.formDataOption.reportIdOption[i] = {value: result[i]};
+                        }
+                    }
+                }, () => {
+                    that.formDataOption.reportIdOption = [];
+                });
+            },
+
+            //查询工艺
+            queryWorkTec: function () {
+                requestGet("queryWorkTecByReportTypeAndReportId", {
+                    reportType: this.form.reportType || '',
+                    reportId: this.form.reportId || '',
+                }, response => {
+                    let result = response.data;
+                    this.formDataOption.workTecOption = [];
+                    this.formDataOption.workSectionOption = [];
+                    for (let i = 0; i < result.workTec.name.length; i++) {
+                        this.formDataOption.workTecOption[i] = {
+                            index: i,
+                            id: result.workTec.id[i],
+                            name: result.workTec.name[i]
+                        };
+                    }
+                    for (let i = 0; i < result.workSection.name.length; i++) {
+                        this.formDataOption.workSectionOption[i] = {
+                            id: result.workSection.id[i],
+                            name: result.workSection.name[i]
+                        };
+                    }
+                }, () => {
+                    this.formDataOption.workTecOption = [];
+                    this.formDataOption.workSectionOption = [];
+                });
+            },
+
+            //选择工艺
+            selectWorkTec: function () {
+                let index = parseInt(this.form.workTecSelect);
+                this.form.workTec = this.formDataOption.workTecOption[index].name;
+                this.form.workTecId = this.formDataOption.workTecOption[index].id;
+                this.form.workSection = this.formDataOption.workSectionOption[index].id;
+                this.form.workSectionName = this.formDataOption.workSectionOption[index].name;
+            },
+
+            //查询工序
+            queryWorkProcedure: function () {
+                let that = this;
+                requestGet("queryWorkProcedure", {
+                    reportType: that.form.reportType || '',
+                    reportId: that.form.reportId || '',
+                    workTecId: that.form.workTecId,
+                    workSection: that.form.workSection
+                }, response => {
+                    let result = response.data;
+                    that.formDataOption.workProcedureOption = [];
+                    for (let i = 0; i < result.length; i++) {
+                        that.formDataOption.workProcedureOption[i] = {value: result[i]};
+                    }
+                }, () => {
+                    that.formDataOption.workProcedureOption = [];
+                });
+            },
+
+            //查询机器编号
+            queryMacId: function () {
+                requestGet("queryMachineId", {
+                    machineName: this.form.macName
+                }, response => {
+                    this.formDataOption.macIdOption = [];
+                    for (let i = 0; i < response.data.length; i++) {
+                        this.formDataOption.macIdOption[i] = {value: response.data[i]};
+                    }
+                }, () => {
+                    this.formDataOption.macIdOption = [];
+                });
+            },
+
+            //提交表单
+            submit: function (formName) {
+                let that = this;
+                formValidation(this, formName, () => {
+                    that.isSubmitLoading = true;
+                    requestPost("submit", that.form, response => {
+                        let result = response.data;
+                        if (result == 1) {
+                            that.dialogVisible = true;
+                        } else if (result == -1) {
+                            that.$message.error('报工时间不能选择两天前');
+                        } else if (result == -2) {
+                            that.$message.error('当前时间段不允许报工');
+                        } else {
+                            that.$message.error('网络繁忙请重试');
+                        }
+                        that.isSubmitLoading = false;
+                    }, () => {
+                        that.$message.error('网络异常');
+                        that.isSubmitLoading = false;
+                    })
+                });
+            }
+        },
+        watch: {
+            'form.proName': function () {
+                this.form.proSize = '';
+            },
+            'form.proSize': function () {
+                this.form.proId = '';
+                //查询产品品号
+                if (this.form.proSize) {
+                    let that = this;
+                    requestGet("queryProductId", {
+                        proName: that.form.proName,
+                        proSize: that.form.proSize
+                    }, response => {
+                        that.form.proId = response.data;
+                    });
+                }
+            },
+            'form.proId': function () {
+                this.form.reportType = '';
+                this.form.reportId = '';
+            },
+            'form.workType': function () {
+                this.form.reportType = '';
+
+                if (this.form.workType === 'D402') {
+                    this.form.macName = '工序没有机器';
+                    this.form.mac_hour = 0;
+                }
+            },
+            'form.reportType': function () {
+                this.form.reportId = '';
+                this.form.workTec = '';
+                this.form.workTecId = '';
+                this.form.workTecSelect = '';
+            },
+            'form.reportId': function () {
+                this.form.workTec = '';
+                this.form.workTecId = '';
+                this.form.workTecSelect = '';
+            },
+            'form.workTec': function () {
+                this.form.workProcedure = '';
+                if (!this.form.workTec) {
+                    this.form.workSection = '';
+                    this.form.workSectionName = '';
+                }
+            },
+            'form.macName': function () {
+                this.form.macId = '';
+
+                if (this.form.workType === 'D402') {
+                    this.form.macId = '00001';
+                }
+            }
+        }
+    });
+</script>
+</html>

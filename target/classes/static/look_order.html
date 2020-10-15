@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>报工查看</title>
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="element-ui/packages/theme-chalk/lib/index.css">
+    <script src="js/vue/dist/vue.min.js"></script>
+    <script src="js/index.js"></script>
+    <script src="js/axios.min.js"></script>
+    <script src="js/main.js"></script>
+    <style>
+        .container {
+            height: 100%;
+            width: 100%;
+            min-width: 1000px;
+        }
+
+        .search-item {
+            float: left;
+        }
+
+        .header-search::after {
+            content: '';
+            display: block;
+            clear: both;
+        }
+
+        .el-dialog__header {
+            background: #409EFF !important;
+        }
+
+        .el-dialog__header .el-dialog__title {
+            color: #ffffff !important;
+            font-size: 15px;
+        }
+
+        .el-dialog__body {
+            padding: 20px !important;
+        }
+
+        .el-dialog__wrapper {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-width: 1020px;
+        }
+
+        .el-dialog {
+            margin: 0 !important;
+        }
+
+        .el-dialog__footer {
+            border-top: 1px solid #DCDFE6;
+        }
+
+        .el-form-item {
+            margin-bottom: 0;
+        }
+
+        .el-row {
+            padding: 15px 0;
+        }
+
+        .el-dialog .el-input__inner {
+            width: 240px !important;
+        }
+
+        .delete-dialog .el-dialog__footer {
+            border: none;
+        }
+    </style>
+</head>
+<body>
+<el-container id="app" class="container">
+    <el-header
+            style="height: 55px; background: #fff; padding: 14px 20px; box-sizing: border-box; border-bottom: 1px solid #999">
+        <el-date-picker class="search-item"
+                        v-model="searchData.date"
+                        type="daterange"
+                        range-separator="至"
+                        start-placeholder="开始日期"
+                        end-placeholder="结束日期"
+                        value-format="yyyy-MM-dd"
+                        size="mini"
+                        style="width: 250px">
+        </el-date-picker>
+        <div class="search-item" style="padding: 0 10px; line-height: 28px; color: #606266">-</div>
+        <el-autocomplete class="search-item"
+                         v-model="searchData.proName"
+                         placeholder="产品名称"
+                         :fetch-suggestions="querySearchProName"
+                         :trigger-on-focus="false"
+                         style="width: 200px"
+                         size="mini">
+        </el-autocomplete>
+        <div class="search-item" style="padding: 0 10px; line-height: 28px; color: #606266">-</div>
+        <el-button class="search-item" icon="el-icon-search" @click="querySearch" style="padding: 7px" plain
+                   size="mini"></el-button>
+        <el-button style="float: right" @click="queryAllData" plain size="mini">全部</el-button>
+    </el-header>
+    <el-main style="padding: 20px; background-color: #f4f4f4;">
+        <el-table :data="tableObject.tableData"
+                  max-height="auto"
+                  v-loading.fullscreen.lock="tableObject.loadingData"
+                  element-loading-text="数据加载中"
+                  element-loading-spinner="el-icon-loading"
+                  element-loading-background="rgba(0, 0, 0, 0.8)"
+                  style="width: 100%; min-width: 900px;">
+            <el-table-column prop="id" label="编号" min-width="5%" align="center"></el-table-column>
+            <el-table-column prop="date" label="日期" min-width="10%" align="center"></el-table-column>
+            <el-table-column label="工单" min-width="10%" align="center">
+                <template slot-scope="scope">
+                    {{scope.row.reportType + " - " + scope.row.reportId}}
+                </template>
+            </el-table-column>
+            <el-table-column prop="proName" label="产品名称" min-width="12%" align="center"></el-table-column>
+            <el-table-column prop="proSize" label="产品规格" min-width="10%" align="center"></el-table-column>
+            <el-table-column prop="macName" label="机器名称" min-width="13%" align="center"></el-table-column>
+            <el-table-column prop="workTec" label="工艺" min-width="7%" align="center"></el-table-column>
+            <el-table-column prop="transferNum" label="数量" min-width="8%" align="center"></el-table-column>
+            <el-table-column prop="work_hour" label="工时" min-width="5%" align="center"></el-table-column>
+            <el-table-column prop="state" label="审核状态" min-width="10%" align="center">
+                <template slot-scope="scope">
+                    <el-link v-if="scope.row.state==0" type="info" :underline="false" style="font-size: 12px;">
+                        待审核
+                    </el-link>
+                    <el-link v-else-if="scope.row.state==-1" type="danger" :underline="false" style="font-size: 12px;">
+                        已退回
+                    </el-link>
+                    <el-link v-else-if="scope.row.state>=6" type="success" :underline="false" style="font-size: 12px;">
+                        审核通过
+                    </el-link>
+                    <el-link v-else-if="scope.row.state<6" type="primary" :underline="false" style="font-size: 12px;">
+                        {{scope.row.state}}级审核通过
+                    </el-link>
+                </template>
+            </el-table-column>
+            <el-table-column fixed="right" label="操作" min-width="10%" align="center">
+                <template slot-scope="scope">
+                    <el-button type="text" size="small" @click="viewDetails(scope.row)">
+                        <template v-if="scope.row.state <= 0">查看 / 修改</template>
+                        <template v-else>查看</template>
+                    </el-button>
+                    <el-button v-if="scope.row.state <= 0" type="text" size="small" style="color: #F56C6C"
+                               @click="function(){
+										   deleteDialog.showDialog = true;
+										   deleteDialog.data = scope.row;
+									   }">删除
+                    </el-button>
+                </template>
+            </el-table-column>
+        </el-table>
+    </el-main>
+    <el-footer style="height: available; padding: 10px 20px; border-top: 1px solid #999">
+        <el-pagination
+                background
+                layout="prev, pager, next"
+                :page-size="10"
+                :total="tableObject.totalNum"
+                @current-change="queryDataByPageNum"
+                :current-page.sync="tableObject.currentPage">
+        </el-pagination>
+    </el-footer>
+    <el-dialog
+            title="报工表详情"
+            :visible.sync="dialog.showDialog"
+            width="1080px"
+            center
+            destroy-on-close
+            :show-close="false">
+        <el-form ref="dialog.data" :model="dialog.data" :rules="dialog.formRules" label-width="100px">
+            <el-row :gutter="20">
+                <el-col :span="8">
+                    <el-form-item label="员工姓名">
+                        <el-input v-model="dialog.data.user_name" disabled></el-input>
+                    </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                    <el-form-item label="员工编号">
+                        <el-input v-model="dialog.data.user_id" disabled></el-input>
+                    </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                    <el-form-item label="日期" prop="date">
+                        <el-date-picker
+                                v-model="dialog.data.date"
+                                type="date"
+                                placeholder="选择日期"
+                                value-format="yyyy-MM-dd"
+                                :disabled="dialog.isDataDisabled">
+                        </el-date-picker>
+                    </el-form-item>
+                </el-col>
+            </el-row>
+            <el-row :gutter="20">
+                <el-col :span=8>
+                    <el-form-item label="产品名称" prop="proName">
+                        <el-autocomplete
+                                v-model="dialog.data.proName"
+                                :fetch-suggestions="querySearchProName"
+                                placeholder="请输入产品名称"
+                                :trigger-on-focus="false"
+                                :disabled="dialog.isDataDisabled"
+                        ></el-autocomplete>
+                    </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                    <el-form-item label="产品规格" prop="proSize">
+                        <el-select v-model="dialog.data.proSize"
+                                   placeholder="请选择"
+                                   :disabled="dialog.isDataDisabled"
+                                   @focus="queryProSize">
+                            <el-option v-for="item in dialog.editOption.proSizeOption"
+                                       :key="item.value"
+                                       :label="item.value"
+                                       :value="item.value">
+                            </el-option>
+                        </el-select>
+                    </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                    <el-form-item label="产品品号" prop="proId">
+                        <el-input v-model="dialog.data.proId" disabled></el-input>
+                    </el-form-item>
+                </el-col>
+            </el-row>
+            <el-row :gutter="20">
+                <el-col :span="8">
+                    <el-form-item label="报工类型" prop="workType">
+                        <el-select v-model="dialog.data.workType" placeholder="请选择" disabled>
+                            <el-option v-for="item in dialog.editOption.workTypeOption"
+                                       :key="item.value"
+                                       :label="item.label"
+                                       :value="item.value">
+                            </el-option>
+                        </el-select>
+                    </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                    <el-form-item label="工单单别" prop="reportType">
+                        <el-select v-model="dialog.data.reportType"
+                                   placeholder="请选择"
+                                   :disabled="dialog.isDataDisabled"
+                                   @focus="queryReportType">
+                            <el-option v-for="item in dialog.editOption.reportTypeOption"
+                                       :key="item.value"
+                                       :label="item.value"
+                                       :value="item.value">
+                            </el-option>
+                        </el-select>
+                    </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                    <el-form-item label="工单单号" prop="reportId">
+                        <el-select v-model="dialog.data.reportId"
+                                   placeholder="请选择"
+                                   :disabled="dialog.isDataDisabled"
+                                   @focus="queryReportId">
+                            <el-option v-for="item in dialog.editOption.reportIdOption"
+                                       :key="item.value"
+                                       :label="item.value"
+                                       :value="item.value">
+                            </el-option>
+                        </el-select>
+                    </el-form-item>
+                </el-col>
+            </el-row>
+            <el-row :gutter="20">
+                <el-col :span="8">
+                    <el-form-item label="工艺名称" prop="workTecId">
+                        <el-select v-model="dialog.data.workTecId"
+                                   placeholder="请选择"
+                                   :disabled="dialog.isDataDisabled"
+                                   @focus="queryWorkTecAndWorkSection"
+                                   @change="selectWorkTec">
+                            <el-option v-for="item in dialog.editOption.workTecOption"
+                                       :key="item.id"
+                                       :label="item.name"
+                                       :value="item.id">
+                            </el-option>
+                        </el-select>
+                    </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                    <el-form-item label="工段" prop="workSectionName">
+                        <el-input v-model="dialog.data.workSectionName" disabled></el-input>
+                    </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                    <el-form-item label="工序编号" prop="workProcedure">
+                        <el-select v-model="dialog.data.workProcedure"
+                                   placeholder="请选择"
+                                   :disabled="dialog.isDataDisabled"
+                                   @focus="queryWorkProcedure">
+                            <el-option v-for="item in dialog.editOption.workProcedureOption"
+                                       :key="item.value"
+                                       :label="item.value"
+                                       :value="item.value">
+                            </el-option>
+                        </el-select>
+                    </el-form-item>
+                </el-col>
+            </el-row>
+            <el-row :gutter="20">
+                <el-col :span="8">
+                    <el-form-item label="机器名称" prop="macName">
+                        <el-autocomplete v-model="dialog.data.macName"
+                                         :fetch-suggestions="querySearchMacName"
+                                         placeholder="请输入机器名称"
+                                         :trigger-on-focus="false"
+                                         :disabled="dialog.isDataDisabled"
+                        ></el-autocomplete>
+                    </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                    <el-form-item label="机器编号" prop="macId">
+                        <el-select v-model="dialog.data.macId"
+                                   placeholder="请选择"
+                                   :disabled="dialog.isDataDisabled"
+                                   @focus="queryMacId">
+                            <el-option v-for="item in dialog.editOption.macIdOption"
+                                       :key="item.value"
+                                       :label="item.value"
+                                       :value="item.value">
+                            </el-option>
+                        </el-select>
+                    </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                    <el-form-item label="机时" prop="mac_hour">
+                        <el-input type="number" v-model="dialog.data.mac_hour"
+                                  :disabled="dialog.isDataDisabled"></el-input>
+                    </el-form-item>
+                </el-col>
+            </el-row>
+            <el-row :gutter="20">
+                <el-col :span="8">
+                    <el-form-item label="转移数量" prop="transferNum">
+                        <el-input type="number" v-model.number="dialog.data.transferNum"
+                                  :disabled="dialog.isDataDisabled"></el-input>
+                    </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                    <el-form-item label="报废数量" prop="failNum">
+                        <el-input type="number" v-model.number="dialog.data.failNum"
+                                  :disabled="dialog.isDataDisabled"></el-input>
+                    </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                    <el-form-item label="工时" prop="work_hour">
+                        <el-input type="number" v-model.number="dialog.data.work_hour"
+                                  :disabled="dialog.isDataDisabled"></el-input>
+                    </el-form-item>
+                </el-col>
+            </el-row>
+            <el-row :gutter="20">
+                <el-col :span="8">
+                    <el-form-item label="班别" prop="workTime">
+                        <el-select v-model="dialog.data.workTime"
+                                   placeholder="请选择" :disabled="dialog.isDataDisabled">
+                            <el-option :key="0" :label="'白班'" :value="'白班'"></el-option>
+                            <el-option :key="1" :label="'晚班'" :value="'晚班'"></el-option>
+                        </el-select>
+                    </el-form-item>
+                </el-col>
+            </el-row>
+            <el-row :gutter="20">
+                <el-col :span="16">
+                    <el-form-item label="备注">
+                        <el-input type="textarea" v-model="dialog.data.info"
+                                  :disabled="dialog.isDataDisabled"></el-input>
+                    </el-form-item>
+                </el-col>
+            </el-row>
+            <el-row :gutter="20" v-if="dialog.data.state == -1">
+                <el-col :span="16">
+                    <el-form-item label="退回原因">
+                        <el-input type="textarea" v-model="dialog.data.back_info" disabled></el-input>
+                    </el-form-item>
+                </el-col>
+            </el-row>
+        </el-form>
+        <div slot="footer">
+            <el-button size="small" v-if="dialog.isEdit == false" @click="dialog.showDialog=false">返回</el-button>
+            <el-button size="small" v-if="dialog.data.state<1 && !dialog.isEdit" type="primary" @click="edit">编辑
+            </el-button>
+            <el-button size="small" v-if="dialog.isEdit" @click="cancelEdit">取消</el-button>
+            <el-button size="small" v-if="dialog.isEdit" type="success" :loading="dialog.isLoading"
+                       @click="reSubmit('dialog.data')">重新提交<i class="el-icon-check el-icon-right"></i></el-button>
+        </div>
+    </el-dialog>
+    <el-dialog class="delete-dialog"
+               title="提示"
+               :visible.sync="deleteDialog.showDialog"
+               width="400px"
+               :show-close="false">
+        <span>确定删除？</span>
+        <span slot="footer" class="dialog-footer">
+					<el-button @click="deleteDialog.showDialog = false" size="small">取消</el-button>
+					<el-button type="primary" @click="deleteOrder" size="small">确定</el-button>
+				</span>
+    </el-dialog>
+</el-container>
+</body>
+<script>
+    //Vue实例对象
+    var vue = new Vue({
+        //挂载根节点
+        el: '#app',
+        //生命周期函数，在data之后调用
+        created: function () {
+            this.user = JSON.parse(window.sessionStorage.getItem("user"));
+            this.queryAllData();
+        },
+        //数据对象
+        data: {
+            user: {},
+            searchData: {
+                date: null,
+                proName: ''
+            },
+            tableObject: {
+                tableData: [],
+                totalNum: 0,
+                currentPage: 1,
+                loadingData: false,
+                date: null,
+                proName: ''
+            },
+            dialog: {
+                showDialog: false,
+                data: {},
+                backupData: {},
+                enableQuery: false,
+                isDataDisabled: true,
+                isEdit: false,
+                isLoading: false,
+                editOption: {
+                    proSizeOption: [],
+                    workTypeOption: [{
+                        value: 'D401',
+                        label: '正常报工'
+                    }, {
+                        value: 'D402',
+                        label: '辅助报工'
+                    }],
+                    reportTypeOption: [],
+                    reportIdOption: [],
+                    workTecOption: [],
+                    workSectionOption: [],
+                    workProcedureOption: [],
+                    macIdOption: []
+                },
+                formRules: {
+                    date: [
+                        {required: true, message: '请选择日期'}
+                    ],
+                    proName: [
+                        {required: true, message: '请填写产品名称'}
+                    ],
+                    proSize: [
+                        {required: true, message: '请选择产品规格'}
+                    ],
+                    proId: [
+                        {required: true, message: '请填写产品品号'}
+                    ],
+                    workType: [
+                        {required: true, message: '请选择报工类型'}
+                    ],
+                    reportType: [
+                        {required: true, message: '请选择工单单别'}
+                    ],
+                    reportId: [
+                        {required: true, message: '请选择工单单号'}
+                    ],
+                    macId: [
+                        {required: true, message: '请填写机器编号'}
+                    ],
+                    macName: [
+                        {required: true, message: '请填写机器名称'}
+                    ],
+                    mac_hour: [
+                        {required: true, message: '请填写机时'}
+                    ],
+                    workTecId: [
+                        {required: true, message: '请填写工艺'}
+                    ],
+                    workProcedure: [
+                        {required: true, message: '请选择工序'}
+                    ],
+                    workSectionName: [
+                        {required: true, message: '请填写工段'}
+                    ],
+                    failNum: [
+                        {required: true, message: '请填写报废数量'}
+                    ],
+                    transferNum: [
+                        {required: true, message: '请填写转移数量'},
+                        {type: 'number', message: '转移数量必须为数字值'},
+                        {
+                            validator: function (rule, value, callback) {
+                                if (vue.dialog.data.workType != 'D402') {
+                                    requestGet("queryUserTransferNum", {
+                                        reportType: vue.dialog.data.reportType,
+                                        reportId: vue.dialog.data.reportId,
+                                        workProcedure: vue.dialog.data.workProcedure,
+                                        transferNum: vue.dialog.data.transferNum
+                                    }, response => {
+                                        let result = response.data;
+                                        if (result == -1) {
+                                            callback("请先填写工单单别、工单单号、工序");
+                                        } else {
+                                            if (vue.dialog.data.transferNum > result) {
+                                                callback(new Error('剩余可报数量为' + result));
+                                            } else callback();
+                                        }
+                                    });
+                                } else {
+                                    callback();
+                                }
+                            }
+                        }
+                    ],
+                    work_hour: [
+                        {required: true, message: '请填写工时'},
+                        {type: 'number', message: '工时必须为数字值'},
+                        {
+                            validator: function (rule, value, callback) {
+                                if (vue.dialog.data.workType != 'D402') {
+                                    requestGet("queryTodayWorkHour", {
+                                        user_id: vue.dialog.data.user_id,
+                                        date: vue.dialog.data.date
+                                    }, response => {
+                                        if (vue.dialog.data.date == vue.dialog.backupData.date) {
+                                            let left = 24 + vue.dialog.backupData.work_hour - response.data;
+                                            if (vue.dialog.data.work_hour > left)
+                                                callback(new Error('剩余可报工时为' + left));
+                                            else
+                                                callback();
+                                        } else {
+                                            if (vue.dialog.data.work_hour > 24 - response.data)
+                                                callback(new Error('剩余可报工时为' + (24 - response.data)));
+                                            else
+                                                callback();
+                                        }
+                                    });
+                                } else {
+                                    callback();
+                                }
+                            }
+                        }
+                    ]
+                }
+            },
+            deleteDialog: {
+                showDialog: false,
+                data: {}
+            }
+        },
+        //方法
+        methods: {
+            //查询全部数据
+            queryAllData: function () {
+                this.tableObject.currentPage = 1;
+
+                this.tableObject.date = null;
+                this.tableObject.proName = '';
+
+                //查询数据总数
+                this.queryDataNum();
+                //查询第一页数据
+                this.queryDataByPageNum(1);
+            },
+
+            //搜索查询
+            querySearch: function () {
+                this.tableObject.currentPage = 1;
+
+                this.tableObject.date = this.searchData.date;
+                this.tableObject.proName = this.searchData.proName;
+
+                //查询数据总数
+                this.queryDataNum();
+                //查询第一页数据
+                this.queryDataByPageNum(1);
+            },
+
+            //查询数据总数
+            queryDataNum: function () {
+                let that = this;
+
+                let UserTaskPick = {
+                    user_id: this.user.user_id,
+                    date: this.tableObject.date,
+                    proName: this.tableObject.proName,
+                }
+
+                requestPost("queryPagesByUserTaskPick", UserTaskPick, response => {
+                    that.tableObject.totalNum = response.data;
+                })
+            },
+
+            //根据页数获取数据
+            queryDataByPageNum: function (pageNum) {
+                let that = this;
+
+                let UserTaskPick = {
+                    user_id: this.user.user_id,
+                    date: this.tableObject.date,
+                    proName: this.tableObject.proName,
+                    pageNum: pageNum
+                }
+
+                that.tableObject.loadingData = true;
+                requestPost("queryDataByUserTaskPick", UserTaskPick, response => {
+                    that.tableObject.tableData = response.data;
+                    that.tableObject.loadingData = false;
+                }, () => {
+                    that.tableObject.tableData = [];
+                    that.tableObject.loadingData = false;
+                    that.$message.error("网络异常");
+                })
+            },
+
+            //报工表查看详情
+            viewDetails: function (data) {
+                this.dialog.data = JSON.parse(JSON.stringify(data));
+                //备份数据
+                this.dialog.backupData = JSON.parse(JSON.stringify(data));
+                this.dialog.showDialog = true;
+                this.queryWorkTecAndWorkSection();
+            },
+
+            //搜索产品名称建议
+            querySearchProName: function (queryString, cb) {
+                autoCompleteQuery("queryProductName", queryString, cb)
+            },
+
+            //搜索机器名称建议
+            querySearchMacName: function (queryString, cb) {
+                autoCompleteQuery("queryMachineName", queryString, cb)
+            },
+
+            //查询产品规格
+            queryProSize: function () {
+                let that = this;
+                requestGet("queryProductSize", {
+                    proName: that.dialog.data.proName
+                }, response => {
+                    let result = response.data;
+                    that.dialog.editOption.proSizeOption = [];
+                    if (result.length != 0) {
+                        for (let i = 0; i < result.length; i++) {
+                            that.dialog.editOption.proSizeOption[i] = {value: result[i]};
+                        }
+                    }
+                }, () => {
+                    that.dialog.editOption.proSizeOption = [];
+                });
+            },
+
+            //查询工单单别
+            queryReportType: function () {
+                if (this.dialog.data.workType == 'D402') {
+                    this.dialog.editOption.reportTypeOption = [{value: '5199'}];
+                } else {
+                    let that = this;
+                    requestGet("queryReportType", {
+                        proId: that.dialog.data.proId,
+                        workType: that.dialog.data.workType
+                    }, response => {
+                        let result = response.data;
+                        that.dialog.editOption.reportTypeOption = [];
+                        if (result.length != 0) {
+                            for (let i = 0; i < result.length; i++) {
+                                that.dialog.editOption.reportTypeOption[i] = {value: result[i]};
+                            }
+                        }
+                    }, () => {
+                        that.dialog.editOption.reportTypeOption = [];
+                    });
+                }
+            },
+
+            //查询工单单号
+            queryReportId: function () {
+                let that = this;
+                requestGet("queryReportId", {
+                    proId: that.dialog.data.proId,
+                    reportType: that.dialog.data.reportType
+                }, response => {
+                    let result = response.data;
+                    that.dialog.editOption.reportIdOption = [];
+                    if (result.length != 0) {
+                        for (let i = 0; i < result.length; i++) {
+                            that.dialog.editOption.reportIdOption[i] = {value: result[i]};
+                        }
+                    }
+                }, () => {
+                    that.dialog.editOption.reportIdOption = [];
+                });
+            },
+
+            //查询工艺和工段
+            queryWorkTecAndWorkSection: function () {
+                requestGet("queryWorkTecByReportTypeAndReportId", {
+                    reportType: this.dialog.data.reportType || '',
+                    reportId: this.dialog.data.reportId || ''
+                }, response => {
+                    let result = response.data;
+                    this.dialog.editOption.workTecOption = [];
+                    this.dialog.editOption.workSectionOption = [];
+                    for (let i = 0; i < result.workTec.name.length; i++) {
+                        this.dialog.editOption.workTecOption[i] = {
+                            id: result.workTec.id[i],
+                            name: result.workTec.name[i]
+                        };
+                    }
+                    for (let i = 0; i < result.workSection.name.length; i++) {
+                        this.dialog.editOption.workSectionOption[i] = {
+                            id: result.workSection.id[i],
+                            name: result.workSection.name[i]
+                        };
+                    }
+                }, () => {
+                    this.dialog.editOption.workTecOption = [];
+                    this.dialog.editOption.workSectionOption = [];
+                });
+            },
+
+            //选择工艺
+            selectWorkTec: function () {
+                if (this.dialog.data.workTecId) {
+                    for (let i = 0; i < this.dialog.editOption.workTecOption.length; i++) {
+                        if (this.dialog.editOption.workTecOption[i].id == this.dialog.data.workTecId) {
+                            this.dialog.data.workTec = this.dialog.editOption.workTecOption[i].name;
+                            this.dialog.data.workSection = this.dialog.editOption.workSectionOption[i].id;
+                            this.dialog.data.workSectionName = this.dialog.editOption.workSectionOption[i].name;
+                        }
+                    }
+                }
+            },
+
+            //查询工序
+            queryWorkProcedure: function () {
+                let that = this;
+                requestGet("queryWorkProcedure", {
+                    reportType: that.dialog.data.reportType || '',
+                    reportId: that.dialog.data.reportId || '',
+                    workTecId: that.dialog.data.workTecId,
+                    workSection: that.dialog.data.workSection
+                }, response => {
+                    let result = response.data;
+                    that.dialog.editOption.workProcedureOption = [];
+                    if (result.length != 0) {
+                        for (let i = 0; i < result.length; i++) {
+                            that.dialog.editOption.workProcedureOption[i] = {value: result[i]};
+                        }
+                    }
+                }, () => {
+                    that.dialog.editOption.workProcedureOption = [];
+                });
+            },
+
+            //查询机器编号
+            queryMacId: function () {
+                requestGet("queryMachineId", {
+                    machineName: this.dialog.data.macName
+                }, response => {
+                    this.dialog.editOption.macIdOption = [];
+                    for (let i = 0; i < response.data.length; i++) {
+                        this.dialog.editOption.macIdOption[i] = { value: response.data[i] };
+                    }
+                }, () => {
+                    this.dialog.editOption.macIdOption = [];
+                });
+            },
+
+            //点击编辑按钮
+            edit: function () {
+                this.dialog.isDataDisabled = false;
+                this.dialog.isEdit = true;
+                this.dialog.enableQuery = true;
+            },
+
+            //点击取消编辑按钮
+            cancelEdit: function () {
+                this.dialog.isDataDisabled = true;
+                this.dialog.isEdit = false;
+                this.dialog.data = JSON.parse(JSON.stringify(this.dialog.backupData));
+                this.dialog.enableQuery = false;
+            },
+
+            //重新提交
+            reSubmit: function (formName) {
+                let that = this;
+                formValidation(this, formName, () => {
+                    that.dialog.isLoading = true;
+                    requestPost("updateTable", that.dialog.data, response => {
+                        let result = response.data;
+                        if (result == 1) {
+                            that.dialog.showDialog = false;
+                            that.$message.success("修改成功");
+                            this.flushData();
+                        } else {
+                            that.$message.error('提交失败');
+                        }
+                        that.dialog.isLoading = false;
+                    }, () => {
+                        that.$message.error('提交失败');
+                        that.dialog.isLoading = false;
+                    });
+                });
+            },
+
+            //刷新数据
+            flushData: function () {
+                this.queryDataByPageNum(this.tableObject.currentPage);
+            },
+
+            //删除
+            deleteOrder: function () {
+                let that = this;
+                requestGet("deleteOwnTaskByMyself", {
+                    primaryId: this.deleteDialog.data.primaryId,
+                    user_id: this.user.user_id,
+                    password: this.user.password
+                }, response => {
+                    if (response.data == 1) {
+                        that.$message.success("删除成功");
+                        that.flushData();
+                    } else {
+                        that.$message.error("删除失败");
+                    }
+                    that.deleteDialog.showDialog = false;
+                }, () => {
+                    that.$message.error("网络异常");
+                    that.deleteDialog.showDialog = false;
+                })
+            }
+        },
+        //监听器
+        watch: {
+            'dialog.showDialog': function () {
+                if (!this.dialog.showDialog) {
+                    this.dialog.isDataDisabled = true;
+                    this.dialog.isEdit = false
+                    this.dialog.enableQuery = false;
+                }
+            },
+            'dialog.data.proName': function () {
+                if (this.dialog.enableQuery) {
+                    this.dialog.data.proSize = '';
+                }
+            },
+            'dialog.data.proSize': function () {
+                if (this.dialog.enableQuery) {
+                    this.dialog.data.proId = '';
+                    //查询产品品号
+                    if (this.dialog.data.proSize) {
+                        let that = this;
+                        requestGet("queryProductId", {
+                            proName: that.dialog.data.proName,
+                            proSize: that.dialog.data.proSize
+                        }, response => {
+                            that.dialog.data.proId = response.data;
+                        });
+                    }
+                }
+            },
+            'dialog.data.proId': function () {
+                if (this.dialog.enableQuery) {
+                    this.dialog.data.reportType = '';
+                    this.dialog.data.reportId = '';
+                }
+            },
+            'dialog.data.workType': function () {
+                if (this.dialog.enableQuery) {
+                    this.dialog.data.reportType = '';
+
+                    if (this.form.workType === 'D402') {
+                        this.form.macName = '工序没有机器';
+                        this.form.mac_hour = 0;
+                    }
+                }
+            },
+            'dialog.data.reportType': function () {
+                if (this.dialog.enableQuery) {
+                    this.dialog.data.reportId = '';
+                    this.dialog.data.workTec = '';
+                    this.dialog.data.workTecId = '';
+                }
+            },
+            'dialog.data.reportId': function () {
+                if (this.dialog.enableQuery) {
+                    this.dialog.data.workTec = '';
+                    this.dialog.data.workTecId = '';
+                }
+            },
+            'dialog.data.workTec': function () {
+                if (this.dialog.enableQuery) {
+                    this.dialog.data.workProcedure = '';
+                    if (!this.dialog.data.workTec) {
+                        this.dialog.data.workSection = '';
+                        this.dialog.data.workSectionName = '';
+                    }
+                }
+            },
+            'dialog.data.macName': function () {
+                if (this.dialog.enableQuery) {
+                    this.dialog.data.macId = '';
+
+                    if (this.form.workType === 'D402') {
+                        this.form.macId = '00001';
+                    }
+                }
+            }
+        }
+    });
+</script>
+</html>

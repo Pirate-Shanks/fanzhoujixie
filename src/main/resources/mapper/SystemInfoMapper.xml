@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.baogong.dao.ManagerControlDao">
+    <update id="updateSystemInfoButton" parameterType="com.baogong.pojo.SystemInfo">
+        update managercontrol set
+                iscontrol = #{iscontrol}
+    </update>
+    <update id="updateSystemInfoTimePicker" parameterType="com.baogong.pojo.SystemInfo">
+        update managercontrol set
+         start_time1 =#{start_time1},end_time1=#{end_time1},
+                start_time2 =#{start_time2},end_time2=#{end_time2}
+    </update>
+    <select id="getSystemInfo" resultType="com.baogong.pojo.SystemInfo">
+        select * from managercontrol
+    </select>
+</mapper>

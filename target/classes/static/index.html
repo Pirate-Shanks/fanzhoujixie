@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>武汉泛洲机械报工系统 - 登录</title>
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="element-ui/packages/theme-chalk/lib/index.css">
+    <script src="js/vue/dist/vue.min.js"></script>
+    <script src="js/index.js"></script>
+    <script src="js/axios.min.js"></script>
+    <script src="js/main.js"></script>
+    <style>
+        * {
+            outline: none;
+        }
+
+        .container {
+            width: 100%;
+            height: 100%;
+            background-image: url("img/bg.jpg");
+            background-position: center;
+            background-repeat: no-repeat;
+            background-size: cover;
+            position: relative;
+        }
+
+        .form {
+            padding: 20px 30px 40px;
+            box-sizing: border-box;
+            border-radius: 5px;
+            background: #fff;
+            width: 375px;
+            position: absolute;
+            right: 5%;
+            top: 50%;
+            margin-top: -175px;
+        }
+
+        .form .tit {
+            text-align: center;
+            color: #0080bc;
+        }
+
+        .form .tit .tit-company {
+            font-size: 22px;
+            font-weight: 600;
+            line-height: 50px;
+        }
+
+        .form .tit .tit-lab {
+            line-height: 20px;
+        }
+
+        .form-group {
+            margin-top: 30px;
+            width: 100%;
+            border-bottom: 1px solid #0080bc;
+            position: relative;
+        }
+
+        .form-group label {
+            display: inline-block;
+            line-height: 35px;
+            color: #999;
+            position: absolute;
+            top: 0;
+            left: 0;
+            padding: 0 20px;
+        }
+
+        .form-group input {
+            display: block;
+            width: 100%;
+            height: 35px;
+            line-height: 35px;
+            border: none;
+            color: #0080bc;
+            font-family: Arial;
+            padding: 0 20px 0 100px;
+            box-sizing: border-box;
+            font-size: 15px;
+        }
+
+        .form .tip {
+            margin-top: 20px;
+            color: #aaa;
+            line-height: 20px;
+            font-size: 13px;
+            text-align: right;
+        }
+
+        .login-btn {
+            margin-top: 20px;
+            display: block;
+            width: 100%;
+            height: 40px;
+            border: none;
+            background: #0080bc;
+            border-radius: 3px;
+            color: #fff;
+            cursor: pointer;
+            transition: background .3s;
+        }
+
+        .login-btn:hover {
+            background: #0070ab;
+        }
+
+        .login-btn:active {
+            background: #0080bc;
+        }
+
+        .el-dialog__header {
+            background: #347ebc !important;
+            color: #ffffff;
+        }
+
+        .el-dialog__title {
+            color: #ffffff !important;
+            font-size: 15px;
+        }
+
+        .el-dialog__body {
+            padding-bottom: 10px;
+        }
+
+        .el-dialog__footer {
+            padding-top: 0;
+        }
+    </style>
+</head>
+<body>
+<div class="container" id="app">
+    <div class="form">
+        <div class="form-wrap">
+            <div class="tit">
+                <div class="tit-company">武汉泛洲机械</div>
+                <div class="tit-lab">报工系统 - 登录</div>
+            </div>
+            <div class="form-group">
+                <label for="username">工号</label>
+                <input type="text" id="username" autocomplete="off" v-model="loginForm.user_id">
+            </div>
+            <div class="form-group">
+                <label for="password">密码</label>
+                <input type="text" id="password" autocomplete="off" v-model="loginForm.password">
+            </div>
+            <div class="tip">忘记密码? 请联系管理员</div>
+            <button class="login-btn" @click="login">登录</button>
+        </div>
+    </div>
+    <el-dialog width="400px"
+               title="请输入联系电话"
+               :visible.sync="dialog.showDialog"
+               :show-close="false"
+               :close-on-click-modal="false"
+               :close-on-press-escape="false">
+        <div class="dialog-content">
+            <el-form ref="dialog.dialogForm" :model="dialog.dialogForm" :rules="rules" label-width="70px">
+                <el-form-item label="电话号码" prop="newTel">
+                    <el-input v-model="dialog.dialogForm.newTel"
+                              placeholder="请输入电话号码">
+                    </el-input>
+                </el-form-item>
+            </el-form>
+        </div>
+        <div slot="footer">
+            <el-button size="small" type="primary" @click="updateTelephone('dialog.dialogForm')"
+                       :loading="dialog.isLoading">确定
+            </el-button>
+        </div>
+    </el-dialog>
+</div>
+</body>
+<script>
+    new Vue({
+        el: '#app',
+        data: {
+            user: {},
+            loginForm: {
+                user_id: '',
+                password: ''
+            },
+            dialog: {
+                showDialog: false,
+                dialogForm: {
+                    newTel: ''
+                },
+                isLoading: false
+            },
+            rules: {
+                //电话号码格式验证
+                newTel: [
+                    {
+                        validator: function (rule, value, callback) {
+                            if (/^1[3456789]\d{9}$/.test(value)) callback();
+                            else callback(new Error('请填写正确的电话号码'));
+                        }, trigger: 'blur'
+                    }
+                ]
+            }
+        },
+        methods: {
+            login: function () {
+                if (!this.loginForm.user_id) {
+                    this.$message.error("工号不能为空");
+                    return;
+                }
+                if (!this.loginForm.password) {
+                    this.$message.error("密码不能为空");
+                    return;
+                }
+
+                let that = this;
+                //Post请求
+                requestPost("login", this.loginForm, response => {
+                    let result = response.data.result;
+                    //账号不存在
+                    if (result == 0) {
+                        that.$message.error('账号不存在');
+                    }
+                    //账号密码校验成功
+                    else if (result == 1) {
+                        //检验电话号码是否填写
+                        that.user = response.data.user;
+                        if (!that.user.user_telephone) {
+                            that.dialog.showDialog = true;
+                        } else {
+                            window.sessionStorage.setItem("isLogin", true);
+                            window.sessionStorage.setItem("user", JSON.stringify(that.user));
+                            window.location.href = "system.html";
+                        }
+                    } else if (result == 2) {
+                        that.$message.error('账号或密码错误');
+                    } else if (result == -1) {
+                        that.$message.error('账号已冻结');
+                    } else if (result == -2) {
+                        that.$message.error('当前时间段不能登录');
+                    }
+                }, () => {
+                    that.$message.error('网络异常');
+                });
+            },
+            updateTelephone: function (formName) {
+                let that = this;
+                formValidation(that, formName, () => {
+                    that.dialog.isLoading = true;
+                    updateTelephone({
+                        user_id: that.user.user_id,
+                        user_telephone: that.dialog.dialogForm.newTel
+                    }, () => {
+                        window.sessionStorage.setItem("isLogin", true);
+                        that.user.user_telephone = that.dialog.dialogForm.newTel;
+                        window.sessionStorage.setItem("user", JSON.stringify(that.user));
+                        window.location.href = "system.html";
+                    }, () => {
+                        that.$message.error("失败");
+                        that.showDialog = false;
+                    }, () => {
+                        that.$message.error("网络异常");
+                        that.showDialog = false;
+                    });
+                });
+            }
+        }
+    });
+</script>
+</html>

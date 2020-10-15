@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>报工系统</title>
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="element-ui/packages/theme-chalk/lib/index.css">
+    <script src="js/vue/dist/vue.min.js"></script>
+    <script src="js/index.js"></script>
+    <style type="text/css">
+        .logo {
+            display: inline-block;
+            height: 100%;
+            width: 230px;
+            line-height: 60px;
+            color: #ffffff;
+            float: left;
+        }
+
+        .tabs {
+            display: inline-block;
+            float: left;
+        }
+
+        .el-tabs__header {
+            margin: 18px 0 0;
+        }
+
+        .el-tabs__item {
+            color: #333;
+            background: #fff;
+        }
+
+        .frame-style {
+            display: block;
+            height: 100%;
+            width: 100%;
+            border: none;
+        }
+    </style>
+</head>
+<body>
+<el-container id="app" style="height: 100%;">
+    <el-header style="background: #347ebc;">
+        <div class="logo">武汉泛洲机械制造有限公司</div>
+        <el-tabs class="tabs" type="card" closable v-model="activeTab" @tab-click="clickToggleTab" @tab-remove="deleteTab">
+            <el-tab-pane v-for="item in tabs"
+                         :key="item.name"
+                         :label="item.title"
+                         :name="item.name">
+            </el-tab-pane>
+        </el-tabs>
+    </el-header>
+    <el-container style="height: 100%;">
+        <el-aside style="width: 250px;">
+            <el-menu default-active="-1" style="height: 100%;">
+                <el-menu-item index="0" @click="toggleTab('public_look_order')">
+                    <i class="el-icon-document"></i>
+                    <span slot="title">已申请报工查看</span>
+                </el-menu-item>
+                <el-menu-item index="1" @click="toggleTab('public_write_order')">
+                    <i class="el-icon-edit"></i>
+                    <span slot="title">填写报工申请表</span>
+                </el-menu-item>
+            </el-menu>
+        </el-aside>
+        <el-main style="padding: 0;" id="content-window">
+            <iframe src="public_look_order.html" class="frame-style" name="public_look_order"></iframe>
+        </el-main>
+    </el-container>
+</el-container>
+</body>
+<script>
+    var vue = new Vue({
+        //挂载根节点
+        el: '#app',
+        //数据
+        data: {
+            tabs: [{
+                title: '已申请报工查看',
+                name: 'public_look_order'
+            }],
+            activeTab: 'public_look_order'
+        },
+        watch: {
+        },
+        methods: {
+            //左侧导航栏切换tab项
+            toggleTab: function(name) {
+                let flag = false;
+                //判断tab项是否存在
+                for(let i=0; i<this.tabs.length; i++) {
+                    if(this.tabs[i].name == name) flag = true;
+                }
+                //如果不存在则添加一个tab项
+                if(!flag) this.addTab(name);
+                //显示tab卡内容
+                this.showFrame(name);
+            },
+            //添加tab项
+            addTab: function (name) {
+                let main = document.getElementById('content-window');
+                let frame = document.createElement('iframe');
+                frame.classList.add('frame-style');
+                frame.name = name;
+                main.appendChild(frame);
+                if(name == 'public_look_order') {
+                    this.tabs.push({
+                        title: '已申请报工查看',
+                        name: name
+                    });
+                    frame.src = 'public_look_order.html';
+                } else if(name == 'public_write_order') {
+                    this.tabs.push({
+                        title: '填写报工申请表',
+                        name: name
+                    });
+                    frame.src = 'public_write_order.html';
+                }
+                this.showFrame(name);
+            },
+            //点击tab选项切换tab项
+            clickToggleTab: function (tab) {
+                this.showFrame(tab.name);
+            },
+            //展示选中的tab项内容
+            showFrame: function(name) {
+                let frames = document.getElementById('content-window').childNodes;
+                for(let i=0; i<frames.length; i++) {
+                    if(frames[i].name == name) frames[i].style.display = 'block';
+                    else frames[i].style.display = 'none';
+                };
+                this.activeTab = name;
+            },
+            //删除tab项
+            deleteTab: function(name) {
+                console.log(name)
+                for(let i=0; i<this.tabs.length; i++) {
+                    if(this.tabs[i].name == name) {
+                        //当前选中项为删除对象
+                        if(this.activeTab == name) {
+                            if(i > 0) {
+                                this.activeTab = this.tabs[i - 1].name;
+                                this.showFrame(this.tabs[i - 1].name);
+                            } else if(i < this.tabs.length - 1) {
+                                this.activeTab = this.tabs[i + 1].name;
+                                this.showFrame(this.tabs[i + 1].name);
+                            }
+                        }
+                        //删除当前项
+                        this.tabs.splice(i, 1)
+                        //删除iframe节点
+                        let main = document.getElementById('content-window');
+                        for(let i=0; i<main.childNodes.length; i++) {
+                            if(main.childNodes[i].name == name) main.removeChild(main.childNodes[i]);
+                        }
+                        return;
+                    }
+                }
+            }
+        }
+    });
+</script>
+</html>

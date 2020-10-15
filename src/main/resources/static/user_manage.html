@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>人员管理</title>
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="element-ui/packages/theme-chalk/lib/index.css">
+    <script src="js/vue/dist/vue.min.js"></script>
+    <script src="js/index.js"></script>
+    <script src="js/axios.min.js"></script>
+    <script src="js/main.js"></script>
+    <style>
+        .container {
+            height: 100%;
+            width: 100%;
+            min-width: 1000px;
+        }
+
+        .search-item {
+            float: left;
+        }
+
+        .header-search::after {
+            content: '';
+            display: block;
+            clear: both;
+        }
+
+        .el-dialog__header {
+            background: #409EFF !important;
+        }
+
+        .el-dialog__header .el-dialog__title {
+            color: #ffffff !important;
+            font-size: 15px;
+        }
+
+        .el-dialog__body {
+            padding: 20px !important;
+        }
+
+        .el-dialog__wrapper {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-width: 1020px;
+        }
+
+        .el-dialog {
+            margin: 0 !important;
+        }
+
+        .inner-dialog .el-dialog__footer {
+            padding-top: 0;
+        }
+
+        .user-info .el-dialog__footer {
+            border-top: 1px solid #DCDFE6;
+        }
+
+        .part-card {
+            margin-bottom: 20px;
+        }
+
+        .el-card__body {
+            padding: 20px 0;
+        }
+
+        .col-item {
+            padding: 0 20px;
+        }
+
+        .info-item {
+            line-height: 30px;
+        }
+
+        .info-item .info-item-tit {
+            font-size: 14px;
+            color: #8c939d;
+            margin-right: 20px;
+        }
+
+        .info-item .info-item-val {
+            font-size: 12px;
+            color: #333;
+        }
+
+        .info-item .info-edit-btn {
+            padding: 0;
+        }
+    </style>
+</head>
+<body>
+<el-container id="app" class="container">
+    <el-header
+            style="height: 55px; background: #fff; padding: 14px 20px; box-sizing: border-box;  border-bottom: 1px solid #999">
+        <el-input class="search-item" v-model="searchData.user_id" size="mini" style="width: 150px"
+                  placeholder="员工编号"></el-input>
+        <div class="search-item" style="padding: 0 10px; line-height: 28px; color: #606266">-</div>
+        <el-input class="search-item" v-model="searchData.user_name" size="mini" style="width: 150px"
+                  placeholder="姓名"></el-input>
+        <div class="search-item" style="padding: 0 10px; line-height: 28px; color: #606266">-</div>
+        <el-autocomplete class="search-item"
+                         v-model="searchData.user_local_name"
+                         placeholder="部门名称"
+                         :fetch-suggestions="queryLocalName"
+                         :trigger-on-focus="false"
+                         style="width: 150px"
+                         size="mini">
+        </el-autocomplete>
+        <div class="search-item" style="padding: 0 10px; line-height: 28px; color: #606266">-</div>
+        <el-select class="search-item" v-model="searchData.identify" placeholder="身份" size="mini" style="width: 150px">
+            <el-option label="全部" :value="3"></el-option>
+            <el-option label="普通用户" :value="0"></el-option>
+            <el-option label="审核员" :value="1"></el-option>
+            <el-option label="冻结" :value="-1"></el-option>
+        </el-select>
+        <div class="search-item" style="padding: 0 10px; line-height: 28px; color: #606266">-</div>
+        <el-button class="search-item" icon="el-icon-search" @click="querySearchUsers" style="padding: 7px" plain
+                   size="mini"></el-button>
+        <el-button style="float: right" @click="queryAllUsers" plain size="mini">全部</el-button>
+    </el-header>
+    <el-main style="padding: 20px; background-color: #f4f4f4;">
+        <el-table :data="tableObject.tableData"
+                  max-height="auto"
+                  v-loading.fullscreen.lock="tableObject.loadingData"
+                  element-loading-text="数据加载中"
+                  element-loading-spinner="el-icon-loading"
+                  element-loading-background="rgba(0, 0, 0, 0.8)"
+                  style="width: 100%; min-width: 900px;">
+            <el-table-column prop="id" label="编号" min-width="10%" align="center"></el-table-column>
+            <el-table-column prop="user_id" label="员工编号" min-width="10%" align="center"></el-table-column>
+            <el-table-column prop="user_name" label="员工姓名" min-width="10%" align="center"></el-table-column>
+            <el-table-column prop="user_local_name" label="部门" min-width="10%" align="center"></el-table-column>
+            <el-table-column prop="user_telephone" label="电话号码" min-width="15%" align="center">
+                <template slot-scope="scope">
+                    <template v-if="scope.row.user_telephone">{{scope.row.user_telephone}}</template>
+                    <template v-else>未填写</template>
+                </template>
+            </el-table-column>
+            <el-table-column prop="identify" label="身份" min-width="10%" align="center">
+                <template slot-scope="scope">{{scope.row.identify | identifyFilter}}</template>
+            </el-table-column>
+            <el-table-column label="审核员设置" min-width="15%" align="center">
+                <template slot-scope="scope">
+                    <el-tag size="small" v-if="scope.row.identify == -1" type="info" :disable-transitions="true">冻结状态
+                    </el-tag>
+                    <el-button size="mini" v-else-if="scope.row.identify == 0" type="primary"
+                               @click="setChecker(scope.row)">设为审核员
+                    </el-button>
+                    <el-button size="mini" v-else type="primary" @click="cancelChecker(scope.row)">取消审核员</el-button>
+                </template>
+            </el-table-column>
+            <el-table-column label="操作" min-width="10%" align="center">
+                <template slot-scope="scope">
+                    <el-button size="mini" v-if="scope.row.identify==-1" @click="cancelFrozen(scope.row)" plain>解冻
+                    </el-button>
+                    <el-button size="mini" v-else type="primary" @click="frozen(scope.row)" plain>冻结</el-button>
+                </template>
+            </el-table-column>
+            <el-table-column label="修改" min-width="10%" align="center">
+                <template slot-scope="scope">
+                    <el-button size="mini" @click="changeUserInfo(scope.row)" type="text">修改信息</el-button>
+                </template>
+            </el-table-column>
+        </el-table>
+    </el-main>
+    <el-footer style="height: available; padding: 10px 20px; border-top: 1px solid #999">
+        <el-pagination
+                background
+                layout="prev, pager, next"
+                :page-size="10"
+                :total="tableObject.totalNum"
+                @current-change="queryDataByPageNum"
+                :current-page.sync="tableObject.currentPage">
+        </el-pagination>
+    </el-footer>
+    <el-dialog class="user-info"
+               title="用户详情"
+               :visible.sync="dialog.showDialog"
+               width="1080px"
+               center
+               destroy-on-close
+               :show-close="false">
+        <el-card class="part-card" shadow="hover">
+            <div slot="header" style="font-size: 15px">
+                <span>基本信息</span>
+            </div>
+            <el-row>
+                <el-col class="col-item" :span="12" style="border-right: 1px solid #ebeef5;">
+                    <div class="info-item">
+                        <span class="info-item-tit">员工编号</span>
+                        <span class="info-item-val">{{dialog.data.user_id}}</span>
+                        <el-button class="info-edit-btn"
+                                   type="text"
+                                   @click="dialog.changeUserId.showDialog=true">
+                            <i class="el-icon-edit-outline el-icon--right"></i>
+                            修改
+                        </el-button>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-item-tit">员工姓名</span>
+                        <span class="info-item-val">{{dialog.data.user_name}}</span>
+                        <el-button class="info-edit-btn"
+                                   type="text"
+                                   @click="dialog.changeUserName.showDialog=true">
+                            <i class="el-icon-edit-outline el-icon--right"></i>
+                            修改
+                        </el-button>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-item-tit">员工性别</span>
+                        <span class="info-item-val">{{dialog.data.sex || "未填写"}}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-item-tit">员工年龄</span>
+                        <span class="info-item-val">{{dialog.data.year_old>0?dialog.data.year_old+"岁":"未填写"}}</span>
+                    </div>
+                </el-col>
+                <el-col class="col-item" :span="12">
+                    <div class="info-item">
+                        <span class="info-item-tit">登录账号</span>
+                        <span class="info-item-val">{{dialog.data.user_id}}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-item-tit">登录密码</span>
+                        <span class="info-item-val">{{dialog.data.password}}</span>
+                        <el-button class="info-edit-btn"
+                                   type="text"
+                                   @click="dialog.changeUserPassword.showDialog=true">
+                            <i class="el-icon-edit-outline el-icon--right"></i>
+                            修改
+                        </el-button>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-item-tit">电话号码</span>
+                        <span class="info-item-val">{{dialog.data.user_telephone || "未填写"}}</span>
+                    </div>
+                </el-col>
+            </el-row>
+        </el-card>
+        <el-row :gutter="20">
+            <el-col :span="12">
+                <el-card shadow="hover">
+                    <div slot="header" style="font-size: 15px">
+                        <span>工作信息</span>
+                    </div>
+                    <el-row>
+                        <el-col class="col-item" :span="24">
+                            <div class="info-item">
+                                <span class="info-item-tit">部门编号</span>
+                                <span class="info-item-val">{{dialog.data.user_local || "未填写"}}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-item-tit">部门名称</span>
+                                <span class="info-item-val">{{dialog.data.user_local_name || "未填写"}}</span>
+                                <el-button class="info-edit-btn"
+                                           type="text"
+                                           @click="dialog.changeUserLocal.showDialog=true">
+                                    <i class="el-icon-edit-outline el-icon--right"></i>
+                                    修改
+                                </el-button>
+                            </div>
+                        </el-col>
+                    </el-row>
+                </el-card>
+            </el-col>
+            <el-col :span="12">
+                <el-card shadow="hover">
+                    <div slot="header" style="font-size: 15px">
+                        <span>权限信息</span>
+                    </div>
+                    <el-row>
+                        <el-col class="col-item" :span="24" style="border-right: 1px solid #ebeef5;">
+                            <div class="info-item">
+                                <span class="info-item-tit">账号身份</span>
+                                <span class="info-item-val">{{dialog.data.identify | identifyFilter}}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-item-tit">账号权限</span>
+                                <span class="info-item-val">武汉泛洲机械制造有限公司所有权限</span>
+                            </div>
+                        </el-col>
+                    </el-row>
+                </el-card>
+            </el-col>
+        </el-row>
+        <div slot="footer" class="dialog-footer-top-border">
+            <el-button size="small" @click="dialog.showDialog=false;">返回</el-button>
+        </div>
+        <el-dialog width="400px"
+                   title="请填写员工编号"
+                   :visible.sync="dialog.changeUserId.showDialog"
+                   :show-close="false"
+                   destroy-on-close
+                   append-to-body
+                   class="inner-dialog">
+            <div class="dialog-content">
+                <el-form ref="dialog.changeUserId" :model="dialog.changeUserId" :rules="rules" label-width="80px">
+                    <el-form-item label="员工编号" prop="user_id">
+                        <el-input v-model="dialog.changeUserId.user_id"
+                                  placeholder="请输入员工编号">
+                        </el-input>
+                    </el-form-item>
+                </el-form>
+            </div>
+            <div slot="footer">
+                <el-button size="small" @click="dialog.changeUserId.showDialog=false;">取消</el-button>
+                <el-button size="small" type="primary" @click="changeUserId('dialog.changeUserId', dialog.data)"
+                           :loading="dialog.changeUserId.isLoading">确定
+                </el-button>
+            </div>
+        </el-dialog>
+        <el-dialog width="400px"
+                   title="请填写员工姓名"
+                   :visible.sync="dialog.changeUserName.showDialog"
+                   :show-close="false"
+                   destroy-on-close
+                   append-to-body
+                   class="inner-dialog">
+            <div class="dialog-content">
+                <el-form ref="dialog.changeUserName" :model="dialog.changeUserName" :rules="rules" label-width="80px">
+                    <el-form-item label="员工姓名" prop="user_name">
+                        <el-input v-model="dialog.changeUserName.user_name"
+                                  placeholder="请输入员工编号">
+                        </el-input>
+                    </el-form-item>
+                </el-form>
+            </div>
+            <div slot="footer">
+                <el-button size="small" @click="dialog.changeUserName.showDialog=false;">取消</el-button>
+                <el-button size="small" type="primary" @click="changeUserName('dialog.changeUserName', dialog.data)"
+                           :loading="dialog.changeUserName.isLoading">确定
+                </el-button>
+            </div>
+        </el-dialog>
+        <el-dialog width="400px"
+                   title="请输入新密码"
+                   :visible.sync="dialog.changeUserPassword.showDialog"
+                   :show-close="false"
+                   destroy-on-close
+                   append-to-body
+                   class="inner-dialog">
+            <div class="dialog-content">
+                <el-form ref="dialog.changeUserPassword" :model="dialog.changeUserPassword" :rules="rules"
+                         label-width="70px">
+                    <el-form-item label="新密码" prop="password">
+                        <el-input v-model="dialog.changeUserPassword.password"
+                                  placeholder="请输入新密码">
+                        </el-input>
+                    </el-form-item>
+                </el-form>
+            </div>
+            <div slot="footer">
+                <el-button size="small" @click="dialog.changeUserPassword.showDialog=false;">取消</el-button>
+                <el-button size="small" type="primary"
+                           @click="changeUserPassword('dialog.changeUserPassword', dialog.data)"
+                           :loading="dialog.changeUserPassword.isLoading">确定
+                </el-button>
+            </div>
+        </el-dialog>
+        <el-dialog width="450px"
+                   title="请选择部门"
+                   :visible.sync="dialog.changeUserLocal.showDialog"
+                   :show-close="false"
+                   destroy-on-close
+                   append-to-body
+                   class="inner-dialog">
+            <div class="dialog-content">
+                <el-form ref="dialog.changeUserLocal" :model="dialog.changeUserLocal" :rules="rules" label-width="80px">
+                    <el-form-item label="部门名称" prop="selectIndex">
+                        <el-select v-model="dialog.changeUserLocal.selectIndex" placeholder="请选择" @focus="getLocals">
+                            <el-option v-for="item in dialog.changeUserLocal.localOptions"
+                                       :key="item.index"
+                                       :label="item.name"
+                                       :value="item.index">
+                            </el-option>
+                        </el-select>
+                    </el-form-item>
+                </el-form>
+            </div>
+            <div slot="footer">
+                <el-button size="small" @click="dialog.changeUserLocal.showDialog=false;">取消</el-button>
+                <el-button size="small" type="primary" @click="changeUserLocal('dialog.changeUserLocal', dialog.data)"
+                           :loading="dialog.changeUserLocal.isLoading">确定
+                </el-button>
+            </div>
+        </el-dialog>
+    </el-dialog>
+</el-container>
+</body>
+<script>
+    new Vue({
+        el: '#app',
+        created: function () {
+            this.manager = JSON.parse(window.sessionStorage.getItem("user"));
+            this.queryAllUsers();
+        },
+        data: {
+            manager: {},
+            searchData: {
+                user_id: '',
+                user_name: '',
+                user_local_name: '',
+                identify: 3
+            },
+            tableObject: {
+                tableData: [],
+                totalNum: 0,
+                currentPage: 1,
+                loadingData: false,
+                user_id: '',
+                user_name: '',
+                user_local_name: '',
+                identify: ''
+            },
+            dialog: {
+                showDialog: false,
+                data: {},
+                changeUserId: {
+                    //是否显示dialog
+                    showDialog: false,
+                    //更改性别变量
+                    user_id: '',
+                    //提交按钮是否加载
+                    isLoading: false
+                },
+                changeUserName: {
+                    //是否显示dialog
+                    showDialog: false,
+                    //更改性别变量
+                    user_name: '',
+                    //提交按钮是否加载
+                    isLoading: false
+                },
+                changeUserPassword: {
+                    //是否显示dialog
+                    showDialog: false,
+                    //更改性别变量
+                    password: '',
+                    //提交按钮是否加载
+                    isLoading: false
+                },
+                changeUserLocal: {
+                    //是否显示dialog
+                    showDialog: false,
+                    //更改部门变量
+                    selectIndex: '',
+                    //提交按钮是否加载
+                    isLoading: false,
+                    localOptions: []
+                }
+            },
+            rules: {
+                user_id: [
+                    {required: true, message: '请填写员工编号'}
+                ],
+                user_name: [
+                    {required: true, message: '请填写员工姓名'}
+                ],
+                password: [
+                    {required: true, message: '请输入新密码'}
+                ],
+                selectIndex: [
+                    {required: true, message: '请选择部门'}
+                ]
+            }
+        },
+        methods: {
+            //搜索部门名称建议
+            queryLocalName: function (queryString, cb) {
+                autoCompleteQuery("queryUserLocalNameByLike", queryString, cb);
+            },
+            //查询全部用户数据
+            queryAllUsers: function () {
+                this.tableObject.currentPage = 1;
+
+                this.tableObject.user_id = '';
+                this.tableObject.user_name = '';
+                this.tableObject.user_local_name = '';
+                this.tableObject.identify = 3;
+
+                //查询数据总数
+                this.queryDataNum();
+                //查询第一页数据
+                this.queryDataByPageNum(1);
+            },
+            //查询搜索数据
+            querySearchUsers: function () {
+                this.tableObject.currentPage = 1;
+
+                this.tableObject.user_id = this.searchData.user_id;
+                this.tableObject.user_name = this.searchData.user_name;
+                this.tableObject.user_local_name = this.searchData.user_local_name;
+                this.tableObject.identify = this.searchData.identify;
+
+                //查询数据总数
+                this.queryDataNum();
+                //查询第一页数据
+                this.queryDataByPageNum(1);
+            },
+
+            //查询数据总数
+            queryDataNum: function () {
+                let that = this;
+
+                let CheckerUserPick = {
+                    user_local_name: this.tableObject.user_local_name,
+                    user_id: this.tableObject.user_id,
+                    user_name: this.tableObject.user_name,
+                    identify: this.tableObject.identify
+                };
+
+                requestPost("queryUserPagesByConditions", CheckerUserPick, response => {
+                    that.tableObject.totalNum = response.data;
+                })
+            },
+
+            //根据页数查询数据
+            queryDataByPageNum: function (pageNum) {
+                let that = this;
+
+                let CheckerUserPick = {
+                    user_local_name: this.tableObject.user_local_name,
+                    user_id: this.tableObject.user_id,
+                    user_name: this.tableObject.user_name,
+                    identify: this.tableObject.identify,
+                    pageNum: pageNum
+                };
+
+                this.tableObject.loadingData = true;
+                requestPost("queryUserByConditions", CheckerUserPick, response => {
+                    that.tableObject.tableData = response.data;
+                    that.tableObject.loadingData = false;
+                }, () => {
+                    that.tableObject.tableData = [];
+                    that.tableObject.loadingData = false;
+                    that.$message.error("网络异常");
+                })
+            },
+
+            setChecker: function (user) {
+                let that = this;
+                requestGet("setChecker", {user_id: user.user_id}, response => {
+                    let result = response.data;
+                    if (result == 1) {
+                        user.identify = 1;
+                    } else {
+                        that.$message.error("操作失败");
+                    }
+                }, () => {
+                    that.$message.error("网络异常");
+                })
+            },
+            cancelChecker: function (user) {
+                let that = this;
+                requestGet("cancelChecker", {user_id: user.user_id}, response => {
+                    let result = response.data;
+                    if (result == 1) {
+                        user.identify = 0;
+                    } else {
+                        that.$message.error("操作失败");
+                    }
+                }, () => {
+                    that.$message.error("网络异常");
+                })
+            },
+            frozen: function (user) {
+                let that = this;
+                requestGet("frozen", {user_id: user.user_id}, response => {
+                    let result = response.data;
+                    if (result == 1) {
+                        user.identify = -1;
+                    } else {
+                        that.$message.error("操作失败");
+                    }
+                }, () => {
+                    that.$message.error("网络异常");
+                })
+            },
+            cancelFrozen: function (user) {
+                let that = this;
+                requestGet("cancelFrozen", {user_id: user.user_id}, response => {
+                    let result = response.data;
+                    if (result == 1) {
+                        user.identify = 0;
+                    } else {
+                        that.$message.error("操作失败");
+                    }
+                }, () => {
+                    that.$message.error("网络异常");
+                })
+            },
+            changeUserInfo: function (data) {
+                this.dialog.data = data;
+                this.dialog.showDialog = true;
+            },
+            changeUserId: function (formName, user) {
+                formValidation(this, formName, () => {
+                    let that = this;
+                    this.dialog.changeUserId.isLoading = true;
+                    requestGet("updateUserId", {
+                        user_id: that.dialog.data.user_id,
+                        new_user_id: that.dialog.changeUserId.user_id
+                    }, response => {
+                        if (response.data == 1) {
+                            user.user_id = that.dialog.changeUserId.user_id;
+                            that.$message.success("修改成功");
+                        } else {
+                            that.$message.error("操作失败");
+                        }
+                        that.dialog.changeUserId.showDialog = false;
+                    }, () => {
+                        that.$message.error("网络异常");
+                        that.dialog.changeUserId.showDialog = false;
+                    });
+                });
+            },
+            changeUserName: function (formName, user) {
+                formValidation(this, formName, () => {
+                    let that = this;
+                    this.dialog.changeUserName.isLoading = true;
+                    requestGet("updateUserName", {
+                        user_id: that.dialog.data.user_id,
+                        user_name: that.dialog.changeUserName.user_name
+                    }, response => {
+                        if (response.data == 1) {
+                            user.user_name = that.dialog.changeUserName.user_name;
+                            that.$message.success("修改成功");
+                        } else {
+                            that.$message.error("操作失败");
+                        }
+                        that.dialog.changeUserName.showDialog = false;
+                    }, () => {
+                        that.$message.error("网络异常");
+                        that.dialog.changeUserName.showDialog = false;
+                    });
+                });
+            },
+            changeUserPassword: function (formName, user) {
+                formValidation(this, formName, () => {
+                    let that = this;
+                    this.dialog.changeUserPassword.isLoading = true;
+                    requestGet("updatePassword", {
+                        user_id: that.dialog.data.user_id,
+                        password: that.dialog.changeUserPassword.password
+                    }, response => {
+                        if (response.data == 1) {
+                            user.password = that.dialog.changeUserPassword.password;
+                            that.$message.success("修改成功");
+                        } else {
+                            that.$message.error("操作失败");
+                        }
+                        that.dialog.changeUserPassword.showDialog = false;
+                    }, () => {
+                        that.$message.error("网络异常");
+                        that.dialog.changeUserPassword.showDialog = false;
+                    });
+                });
+            },
+            getLocals: function () {
+                requestGet("queryAllLocalName", {}, response => {
+                    this.dialog.changeUserLocal.localOptions = [];
+                    for (let i = 0; i < response.data.length; i++) {
+                        this.dialog.changeUserLocal.localOptions[i] = {
+                            index: i,
+                            id: response.data[i].local_id,
+                            name: response.data[i].user_local_name
+                        };
+                    }
+                }, () => {
+                    this.dialog.changeUserLocal.localOptions = [];
+                });
+            },
+            changeUserLocal: function (formName, user) {
+                formValidation(this, formName, () => {
+                    let that = this;
+                    this.dialog.changeUserLocal.isLoading = true;
+                    let index = that.dialog.changeUserLocal.selectIndex;
+                    requestGet("updateUserLocal", {
+                        user_id: that.dialog.data.user_id,
+                        user_local: that.dialog.changeUserLocal.localOptions[index].id
+                    }, response => {
+                        if (response.data == 1) {
+                            user.user_local = that.dialog.changeUserLocal.localOptions[index].id;
+                            user.user_local_name = that.dialog.changeUserLocal.localOptions[index].name;
+                            that.$message.success("修改成功");
+                        } else {
+                            that.$message.error("操作失败");
+                        }
+                        that.dialog.changeUserLocal.showDialog = false;
+                    }, () => {
+                        that.$message.error("网络异常");
+                        that.dialog.changeUserLocal.showDialog = false;
+                    });
+                });
+            }
+        },
+        filters: {
+            identifyFilter: function (identify) {
+                if (identify == 0) {
+                    return "普通用户";
+                } else if (identify == 1) {
+                    return "审核员";
+                } else if (identify == 2) {
+                    return "系统管理员";
+                } else if (identify == -1) {
+                    return "冻结"
+                }
+            }
+        },
+        watch: {
+            'dialog.changeUserId.showDialog': function () {
+                if (!this.dialog.changeUserId.showDialog) {
+                    this.dialog.changeUserId.user_id = '';
+                    this.dialog.changeUserId.isLoading = false;
+                }
+            },
+            'dialog.changeUserName.showDialog': function () {
+                if (!this.dialog.changeUserName.showDialog) {
+                    this.dialog.changeUserName.user_name = '';
+                    this.dialog.changeUserName.isLoading = false;
+                }
+            },
+            'dialog.changeUserPassword.showDialog': function () {
+                if (!this.dialog.changeUserPassword.showDialog) {
+                    this.dialog.changeUserPassword.password = '';
+                    this.dialog.changeUserPassword.isLoading = false;
+                }
+            },
+            'dialog.changeUserLocal.showDialog': function () {
+                if (!this.dialog.changeUserLocal.showDialog) {
+                    this.dialog.changeUserLocal.selectIndex = '';
+                    this.dialog.changeUserLocal.isLoading = false;
+                    this.dialog.changeUserLocal.localOptions = [];
+                }
+            }
+        }
+    });
+</script>
+</html>

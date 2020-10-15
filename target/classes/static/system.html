@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>报工系统</title>
+		<link rel="stylesheet" href="css/main.css">
+		<link rel="stylesheet" href="element-ui/packages/theme-chalk/lib/index.css">
+		<script src="js/vue/dist/vue.min.js"></script>
+		<script src="js/index.js"></script>
+		<style type="text/css">
+			.logo {
+				display: inline-block;
+				height: 100%;
+				width: 230px;
+				line-height: 60px;
+				color: #ffffff;
+				float: left;
+			}
+
+			.tabs {
+				display: inline-block;
+				float: left;
+			}
+
+			.el-tabs__header {
+				margin: 18px 0 0;
+			}
+
+			.el-tabs__item {
+				color: #333;
+				background: #fff;
+			}
+
+			.top-user-box {
+				float: right;
+				height: 100%;
+				color: #ffffff;
+				line-height: 60px;
+				font-size: 14px;
+			}
+			
+			.el-dropdown-link {
+			    cursor: pointer;
+			    color: #ffffff;
+			}
+
+			.el-icon-arrow-down {
+				font-size: 12px;
+			}
+
+			.frame-style {
+				display: block;
+				height: 100%;
+				width: 100%;
+				border: none;
+			}
+		</style>
+	</head>
+	<body>
+		<el-container id="app" style="height: 100%;">
+			<el-header style="background: #347ebc;">
+				<div class="logo">武汉泛洲机械制造有限公司</div>
+				<el-tabs class="tabs" type="card" closable v-model="activeTab" @tab-click="clickToggleTab" @tab-remove="deleteTab">
+					<el-tab-pane v-for="item in tabs"
+								 :key="item.name"
+								 :label="item.title"
+								 :name="item.name"
+					></el-tab-pane>
+				</el-tabs>
+				<div class="top-user-box">
+					欢迎您：
+					<el-dropdown>
+						<el-tag plain><i class="el-icon-user-solid el-icon--left"></i>{{user.user_name}}<i class="el-icon-arrow-down el-icon--right"></i></el-tag>
+						<el-dropdown-menu slot="dropdown">
+							<el-dropdown-item><i class="el-icon-collection-tag el-icon--left"></i>{{user.identify | identifyFilter}}</el-dropdown-item>
+							<el-dropdown-item @click.native="logout" divided style="color: #f56c6c;"><i class="el-icon-switch-button el-icon--left"></i>退出登录</el-dropdown-item>
+						</el-dropdown-menu>
+					</el-dropdown>
+				</div>
+			</el-header>
+			<el-container style="height: 100%;">
+				<el-aside style="width: 250px;">
+					<el-menu default-active="-1" style="height: 100%;">
+						<el-menu-item v-if="user.identify<=1" index="0" @click="toggleTab('look_order')">
+								<i class="el-icon-document"></i>
+								<span slot="title">已申请报工查看</span>
+						</el-menu-item>
+						<el-menu-item v-if="user.identify<=1" index="1" @click="toggleTab('write_order')">
+							<i class="el-icon-edit"></i>
+							<span slot="title">填写报工申请表</span>
+						</el-menu-item>
+						<el-menu-item v-if="user.identify==1" index="2" @click="toggleTab('check_order')">
+							<i class="el-icon-s-check"></i>
+							<span slot="title">报工审核</span>
+						</el-menu-item>
+						<el-menu-item v-if="user.identify==2" index="3" @click="toggleTab('setting')">
+							<i class="el-icon-setting"></i>
+							<span slot="title">系统设置</span>
+						</el-menu-item>
+						<el-menu-item v-if="user.identify==2" index="4" @click="toggleTab('user_manage')">
+							<i class="el-icon-user-solid"></i>
+							<span slot="title">人员管理</span>
+						</el-menu-item>
+						<el-menu-item v-if="user.identify==2" index="5" @click="toggleTab('checker_setting')">
+							<i class="el-icon-s-check"></i>
+							<span slot="title">审核员设置</span>
+						</el-menu-item>
+						<el-menu-item v-if="user.identify==2" index="6" @click="toggleTab('check_logs')">
+							<i class="el-icon-document-checked"></i>
+							<span slot="title">审核日志</span>
+						</el-menu-item>
+						<el-menu-item v-if="user.identify==2" index="7" @click="toggleTab('write_to_erp')">
+							<i class="el-icon-edit"></i>
+							<span slot="title">写入ERP</span>
+						</el-menu-item>
+						<el-menu-item index="8" @click="toggleTab('userInfo')">
+							<i class="el-icon-user"></i>
+							<span slot="title">个人信息</span>
+						</el-menu-item>
+					</el-menu>
+				</el-aside>
+				<el-main v-loading="loading"
+						 element-loading-text="页面加载中"
+						 element-loading-spinner="el-icon-loading"
+						 element-loading-background="rgba(0, 0, 0, 0.8)"
+						 style="padding: 0;"
+						 id="content-window">
+					<iframe src="userInfo.html" class="frame-style" name="userInfo"></iframe>
+				</el-main>
+			</el-container>
+		</el-container>
+	</body>
+	<script>
+		var vue = new Vue({
+			//挂载根节点
+			el: '#app',
+			//生命周期函数，在data之后调用
+			created: function() {
+				//判断是否登录
+				let isLogin = window.sessionStorage.getItem("isLogin");
+				//如果未登录，跳转到登录界面
+				if(!isLogin) window.location.href = "index.html";
+				else {
+					//从浏览器本地session缓存中读取用户数据
+					this.user = JSON.parse(window.sessionStorage.getItem("user"));
+				}
+			},
+			//数据
+			data: {
+				//用户数据
+				user: {},
+				//页面是否加载中
+				loading: false,
+				tabs: [{
+					title: '个人信息',
+					name: 'userInfo'
+				}],
+				activeTab: 'userInfo'
+			},
+			watch: {
+			},
+			methods: {
+				logout: () => {
+					//清楚浏览器本地session缓存
+					window.sessionStorage.clear();
+					//跳转到登录界面
+					window.location.href = "index.html";
+				},
+				//左侧导航栏切换tab项
+				toggleTab: function(name) {
+					let flag = false;
+					//判断tab项是否存在
+					for(let i=0; i<this.tabs.length; i++) {
+						if(this.tabs[i].name == name) flag = true;
+					}
+					//如果不存在则添加一个tab项
+					if(!flag) this.addTab(name);
+					//显示tab卡内容
+					this.showFrame(name);
+				},
+				//添加tab项
+				addTab: function (name) {
+					let main = document.getElementById('content-window');
+					let frame = document.createElement('iframe');
+					frame.classList.add('frame-style');
+					frame.name = name;
+					main.appendChild(frame);
+					if(name == 'look_order') {
+						this.tabs.push({
+							title: '已申请报工查看',
+							name: name
+						});
+						frame.src = 'look_order.html';
+					} else if(name == 'write_order') {
+						this.tabs.push({
+							title: '填写报工申请表',
+							name: name
+						});
+						frame.src = 'write_order.html';
+					} else if(name == 'check_order') {
+						this.tabs.push({
+							title: '报工审核',
+							name: name
+						});
+						frame.src = 'check_order.html';
+					} else if(name == 'setting') {
+						this.tabs.push({
+							title: '系统设置',
+							name: name
+						});
+						frame.src = 'setting.html';
+					} else if(name == 'user_manage') {
+						this.tabs.push({
+							title: '人员管理',
+							name: name
+						});
+						frame.src = 'user_manage.html';
+					} else if(name == 'checker_setting') {
+						this.tabs.push({
+							title: '审核员设置',
+							name: name
+						});
+						frame.src = 'checker_setting.html';
+					} else if(name == 'check_logs') {
+						this.tabs.push({
+							title: '审核日志',
+							name: name
+						});
+						frame.src = 'check_logs.html';
+					} else if(name == 'write_to_erp') {
+						this.tabs.push({
+							title: '写入ERP',
+							name: name
+						});
+						frame.src = 'write_to_erp.html';
+					} else if(name == 'userInfo') {
+						this.tabs.push({
+							title: '个人信息',
+							name: name
+						});
+						frame.src = 'userInfo.html';
+					}
+					this.showFrame(name);
+				},
+				//点击tab选项切换tab项
+				clickToggleTab: function (tab) {
+					this.showFrame(tab.name);
+				},
+				//展示选中的tab项内容
+				showFrame: function(name) {
+					let frames = document.getElementById('content-window').childNodes;
+					for(let i=0; i<frames.length; i++) {
+						if(frames[i].name == name) frames[i].style.display = 'block';
+						else frames[i].style.display = 'none';
+					};
+					this.activeTab = name;
+				},
+				//删除tab项
+				deleteTab: function(name) {
+					for(let i=0; i<this.tabs.length; i++) {
+						if(this.tabs[i].name == name) {
+							//当前选中项为删除对象
+							if(this.activeTab == name) {
+								if(i > 0) {
+									this.activeTab = this.tabs[i - 1].name;
+									this.showFrame(this.tabs[i - 1].name);
+								} else if(i < this.tabs.length - 1) {
+									this.activeTab = this.tabs[i + 1].name;
+									this.showFrame(this.tabs[i + 1].name);
+								}
+							}
+							//删除当前项
+							this.tabs.splice(i, 1)
+							//删除iframe节点
+							let main = document.getElementById('content-window');
+							for(let i=0; i<main.childNodes.length; i++) {
+								if(main.childNodes[i].name == name) main.removeChild(main.childNodes[i]);
+							}
+							return;
+						}
+					}
+				}
+			},
+			filters: {
+				//身份过滤器
+				identifyFilter: identify => {
+					switch(identify) {
+						case 0: return "普通用户";
+						case 1: return "审核员";
+						case 2: return "系统管理员";
+					}
+				}
+			}
+		});
+	</script>
+</html>
